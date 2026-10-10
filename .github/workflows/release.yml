@@ -1,0 +1,67 @@
+# Compila l'APK e lo pubblica come Release quando crei un tag "vX.Y.Z".
+# L'app sull'auto controlla l'ultima Release e propone l'aggiornamento.
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Tag da pubblicare (es. v1.0.1)"
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    env:
+      TAG: ${{ github.event.inputs.tag || github.ref_name }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Android SDK (API 28 + build-tools)
+        run: |
+          yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "platforms;android-28" "build-tools;34.0.0" > /dev/null
+
+      - name: Pillow (icona)
+        run: pip install --quiet pillow
+
+      - name: Chiave di firma
+        env:
+          KEYSTORE_B64: ${{ secrets.KEYSTORE_B64 }}
+        run: |
+          if [ -z "$KEYSTORE_B64" ]; then
+            echo "::error::Manca il secret KEYSTORE_B64 (vedi README, sezione Rilasci)"; exit 1
+          fi
+          echo "$KEYSTORE_B64" | base64 -d > release.keystore
+
+      - name: Compila APK
+        env:
+          KEYSTORE_PASS: ${{ secrets.KEYSTORE_PASS }}
+        run: |
+          export ANDROID_JAR="$ANDROID_HOME/platforms/android-28/android.jar"
+          export D8="$ANDROID_HOME/build-tools/34.0.0/d8"
+          export KEYSTORE=release.keystore
+          export KEYSTORE_PASS="${KEYSTORE_PASS:-taskmanager}"
+          export VERSION_NAME="$TAG"
+          sh build.sh
+
+      - name: Pubblica Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          NOTES=RELEASE_NOTES.md
+          [ -f "$NOTES" ] || { echo "Aggiornamento $TAG" > /tmp/notes.md; NOTES=/tmp/notes.md; }
+          if gh release view "$TAG" > /dev/null 2>&1; then
+            gh release upload "$TAG" MG4-TaskManager.apk --clobber
+          else
+            gh release create "$TAG" MG4-TaskManager.apk --title "MG4 Task Manager $TAG" --notes-file "$NOTES" --target "$GITHUB_SHA"
+          fi
