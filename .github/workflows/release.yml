@@ -56,6 +56,7 @@ jobs:
           export D8="$ANDROID_HOME/build-tools/34.0.0/d8"
           export KEYSTORE=release.keystore
           export KEYSTORE_PASS="${KEYSTORE_PASS:-taskmanager}"
+          export PLATFORM_KEYSTORE=signing/platform.keystore
           export VERSION_NAME="$TAG"
           sh build.sh
 
@@ -66,8 +67,6 @@ jobs:
         run: |
           NOTES=RELEASE_NOTES.md
           [ -f "$NOTES" ] || { echo "Aggiornamento $TAG" > /tmp/notes.md; NOTES=/tmp/notes.md; }
-          if gh release view "$TAG" > /dev/null 2>&1; then
-            gh release upload "$TAG" MG4-TaskManager.apk --clobber
-          else
-            gh release create "$TAG" MG4-TaskManager.apk --title "MG4 Task Manager $TAG" --notes-file "$NOTES" --target "$GITHUB_SHA"
-          fi
+          APKS="MG4-TaskManager.apk"
+          [ -f MG4-TaskManager-system.apk ] && APKS="$APKS MG4-TaskManager-system.apk"
+          gh release upload "$TAG" $APKS --clobber

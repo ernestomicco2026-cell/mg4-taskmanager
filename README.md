@@ -13,27 +13,37 @@ Funziona collegandosi all'**ADB dell'auto** in locale (`127.0.0.1:5555`), quindi
 - **Tasto al volante** configurabile ("Imposta tasto…" e premi il tasto); opzione «solo pressione lunga»
 - **Aggiornamenti automatici** dalle Release di questo repository, anche ad app chiusa
 
+## Quale edizione scaricare
+
+Nelle [Release](../../releases/latest) ci sono due file. **Installane uno solo.**
+
+- **`MG4-TaskManager-system.apk` (consigliata):** chiusura istantanea e lista completa delle app **senza ADB e senza permessi da attivare**. Funziona perché l'infotainment MG4 è firmato con la chiave platform pubblica di AOSP, quindi questa edizione gira come **app di sistema**. Vedi sotto cosa comporta.
+- **`MG4-TaskManager.apk`:** edizione normale, senza privilegi. Chiusura istantanea solo con ADB attivo, altrimenti modalità base via accessibilità.
+
+### Cosa comporta l'edizione di sistema
+
+- Gira come **app di sistema** sull'infotainment: ha permessi ampi (chiudere a forza le app, leggere i processi). Installala solo se ti fidi della fonte, cioè di questo repository.
+- È firmata con una chiave **pubblica**: chiunque può creare un APK firmato allo stesso modo. Perciò scarica l'APK **solo** da questa pagina Release ufficiale, mai da terzi.
+- Gli aggiornamenti **richiedono sempre un tocco** su «Installa»: l'app non si installa mai da sola in modo silenzioso. (Sulla tua auto, se vuoi, puoi abilitare l'installazione silenziosa via ADB.)
+
 ## Installazione (da chiavetta USB, senza PC)
 
-1. Scarica `MG4-TaskManager.apk` dalle [Release](../../releases/latest) e copialo su una chiavetta USB
+1. Scarica **una** delle due edizioni dalle [Release](../../releases/latest) e copiala su una chiavetta USB
 2. Inserisci la chiavetta nell'auto e installa l'APK come fai con le altre app
-3. Apri **Task Manager** e segui la scheda «Completa la configurazione»:
-   - **Accessibilità** → attiva «Task Manager» (serve per vedere e chiudere le app e per il tasto al volante)
-   - **Accesso ai dati di utilizzo** → consenti a «Task Manager»
+3. Apri **Task Manager**. Con l'edizione di sistema è già tutto pronto. Con quella normale senza ADB, segui la scheda «Completa la configurazione» (Accessibilità + Accesso ai dati di utilizzo).
 
-## Le due modalità
+## Le tre modalità
 
 L'app sceglie da sola, a ogni apertura:
 
-| | Modalità completa | Modalità base |
-|---|---|---|
-| Quando | l'ADB dell'auto risponde su `127.0.0.1:5555` | in tutti gli altri casi |
-| Lista app | processi reali, con RAM usata | app aperte da questa accensione |
-| Chiusura | istantanea (`am force-stop`) | l'app apre «Info app» e preme da sola «Forza interruzione» |
-| Aggiornamenti | installati da soli, in silenzio | scaricati da soli, poi un tocco su «Installa» |
-| Permessi | concessi in automatico | da attivare una volta nelle Impostazioni |
+| | Sistema | Completa (ADB) | Base |
+|---|---|---|---|
+| Quando | edizione firmata platform | ADB risponde su `127.0.0.1:5555` | gli altri casi |
+| Lista app | processi reali, con RAM | processi reali, con RAM | app aperte da questa accensione |
+| Chiusura | istantanea (`forceStopPackage`) | istantanea (`am force-stop`) | «Forza interruzione» via accessibilità |
+| Permessi | automatici (firma) | automatici (ADB) | da attivare una volta |
 
-In modalità completa, alla prima connessione l'auto può chiedere «Consentire il debug?»: spunta «Consenti sempre».
+Con l'edizione normale e ADB, alla prima connessione l'auto può chiedere «Consentire il debug?»: spunta «Consenti sempre».
 
 ## Aggiornamenti automatici
 
@@ -56,6 +66,8 @@ Il numero di versione viene dal tag (`v1.2.3` → versionCode `10203`).
 
 - `KEYSTORE_B64`: il file `tm.keystore` in base64 (`base64 -w0 tm.keystore`)
 - `KEYSTORE_PASS`: la password del keystore
+
+L'edizione di sistema è firmata con la chiave platform **pubblica** di AOSP, versionata in `signing/` (`platform.pk8` + `platform.x509.pem`): non è un segreto e la build di GitHub la usa direttamente.
 
 Non caricare mai `tm.keystore` nel repository e tienine una copia di sicurezza: se la perdi, per aggiornare dovrai disinstallare l'app.
 

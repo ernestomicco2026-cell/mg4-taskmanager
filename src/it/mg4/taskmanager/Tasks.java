@@ -45,8 +45,10 @@ public final class Tasks {
     }
 
     public static final class Result {
+        public static final int BASE = 0, ADB = 1, SYSTEM = 2;
         public List<Entry> entries;
-        public boolean adb;
+        public int mode = BASE;
+        public boolean adb; // true se chiusura istantanea disponibile (sistema o ADB)
         public String adbError;
     }
 
@@ -75,16 +77,29 @@ public final class Tasks {
 
     public static Result list(Context ctx, boolean includeBackground, AdbClient.AuthListener l) {
         Result res = new Result();
+        if (SysPriv.available(ctx)) {
+            res.entries = SysPriv.list(ctx, includeBackground);
+            res.mode = Result.SYSTEM;
+            res.adb = true;
+            sort(res.entries);
+            return res;
+        }
         try {
             res.entries = listAdb(ctx, includeBackground, l);
+            res.mode = Result.ADB;
             res.adb = true;
         } catch (IOException e) {
             res.adbError = e.getMessage();
             res.entries = listBasic(ctx);
+            res.mode = Result.BASE;
             res.adb = false;
         }
         sort(res.entries);
         return res;
+    }
+
+    static Set<String> excludedPackages(Context ctx, PackageManager pm) {
+        return excluded(ctx, pm);
     }
 
     private static Set<String> excluded(Context ctx, PackageManager pm) {
@@ -262,6 +277,13 @@ public final class Tasks {
     // ================================================================== chiusura
 
     /** Prova la chiusura completa via ADB. False se ADB non è disponibile. */
+    /** Chiusura istantanea: modalità sistema se disponibile, altrimenti ADB. False se nessuna delle due. */
+    public static boolean killInstant(Context ctx, List<String> pkgs, AdbClient.AuthListener l) {
+        if (pkgs.isEmpty()) return true;
+        if (SysPriv.available(ctx)) return SysPriv.forceStop(ctx, pkgs);
+        return killAdb(ctx, pkgs, l);
+    }
+
     public static boolean killAdb(Context ctx, List<String> pkgs, AdbClient.AuthListener l) {
         if (pkgs.isEmpty()) return true;
         StringBuilder sb = new StringBuilder();

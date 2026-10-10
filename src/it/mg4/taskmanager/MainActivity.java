@@ -47,7 +47,8 @@ public class MainActivity extends Activity {
 
     static volatile boolean visible;
     private static MainActivity instance;
-    private boolean adbMode;
+    private boolean adbMode; // true in modalità sistema o ADB (chiusura istantanea)
+    private int mode = Tasks.Result.BASE;
     private boolean grantedViaAdb;
 
     private final Handler main = new Handler(Looper.getMainLooper());
@@ -252,7 +253,8 @@ public class MainActivity extends Activity {
             if (e.rssKb > 0) kb += e.rssKb;
         }
         String st = apps + (apps == 1 ? " app aperta" : " app aperte");
-        if (adbMode) st += " · " + (kb / 1024) + " MB · modalità completa";
+        if (mode == Tasks.Result.SYSTEM) st += " · " + (kb / 1024) + " MB · modalità sistema";
+        else if (mode == Tasks.Result.ADB) st += " · " + (kb / 1024) + " MB · modalità completa (ADB)";
         else st += " · modalità base";
         int hidden = current.size() - vis.size();
         if (hidden > 0) st += " · " + hidden + " di sistema nascoste";
@@ -384,6 +386,7 @@ public class MainActivity extends Activity {
      * Sparisce quando accessibilità e accesso ai dati di utilizzo sono attivi.
      */
     private void addSetupCard() {
+        if (mode == Tasks.Result.SYSTEM) return; // in modalità sistema non serve alcun permesso manuale
         boolean a11y = KeyService.running;
         boolean usage = Tasks.hasUsageAccess(this);
         if (a11y && usage) return;
@@ -457,7 +460,8 @@ public class MainActivity extends Activity {
                         loading = false;
                         current = r.entries;
                         adbMode = r.adb;
-                        if (adbMode) grantViaAdbOnce();
+                        mode = r.mode;
+                        if (mode == Tasks.Result.ADB) grantViaAdbOnce();
                         render();
                     }
                 });
@@ -495,7 +499,7 @@ public class MainActivity extends Activity {
         bg.execute(new Runnable() {
             @Override
             public void run() {
-                final boolean viaAdb = Tasks.killAdb(MainActivity.this, pkgs, auth);
+                final boolean viaAdb = Tasks.killInstant(MainActivity.this, pkgs, auth);
                 main.post(new Runnable() {
                     @Override
                     public void run() {
@@ -537,9 +541,14 @@ public class MainActivity extends Activity {
         v.setPadding(dp(24), dp(12), dp(24), dp(4));
 
         v.addView(text("Modalità", 17, TEXT, true));
-        v.addView(text(adbMode
-                ? "Completa: ADB dell'auto raggiungibile, chiusura istantanea e aggiornamenti silenziosi."
-                : "Base: ADB non raggiungibile. Le app si chiudono tramite accessibilità.", 15, MUTED, false));
+        String modeDesc;
+        if (mode == Tasks.Result.SYSTEM)
+            modeDesc = "Sistema: l'app è firmata con la chiave dell'auto. Chiusura istantanea senza ADB, nessun permesso da attivare a mano.";
+        else if (mode == Tasks.Result.ADB)
+            modeDesc = "Completa: ADB dell'auto raggiungibile, chiusura istantanea e aggiornamenti silenziosi.";
+        else
+            modeDesc = "Base: né firma di sistema né ADB. Le app si chiudono tramite accessibilità.";
+        v.addView(text(modeDesc, 15, MUTED, false));
         LinearLayout.LayoutParams a11yP = new LinearLayout.LayoutParams(-2, -2);
         a11yP.topMargin = dp(8);
         v.addView(button(KeyService.running ? "Accessibilità attiva" : "Attiva accessibilità", BTN,
