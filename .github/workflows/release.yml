@@ -35,15 +35,20 @@ jobs:
         run: pip install --quiet pillow
 
       - name: Chiave di firma
+        id: key
         env:
           KEYSTORE_B64: ${{ secrets.KEYSTORE_B64 }}
         run: |
           if [ -z "$KEYSTORE_B64" ]; then
-            echo "::error::Manca il secret KEYSTORE_B64 (vedi README, sezione Rilasci)"; exit 1
+            echo "::warning::Manca il secret KEYSTORE_B64: build saltata (vedi README, sezione Rilasci)"
+            echo "ok=false" >> "$GITHUB_OUTPUT"
+            exit 0
           fi
           echo "$KEYSTORE_B64" | base64 -d > release.keystore
+          echo "ok=true" >> "$GITHUB_OUTPUT"
 
       - name: Compila APK
+        if: steps.key.outputs.ok == 'true'
         env:
           KEYSTORE_PASS: ${{ secrets.KEYSTORE_PASS }}
         run: |
@@ -55,6 +60,7 @@ jobs:
           sh build.sh
 
       - name: Pubblica Release
+        if: steps.key.outputs.ok == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
