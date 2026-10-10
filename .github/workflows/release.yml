@@ -1,10 +1,10 @@
-# Compila l'APK e lo pubblica come Release quando crei un tag "vX.Y.Z".
-# L'app sull'auto controlla l'ultima Release e propone l'aggiornamento.
+# Quando pubblichi una Release (tag "vX.Y.Z") dal sito di GitHub, compila l'APK firmato
+# e lo allega alla Release. Le auto lo trovano al controllo aggiornamenti successivo.
 name: Release
 
 on:
-  push:
-    tags: ["v*"]
+  release:
+    types: [published]
   workflow_dispatch:
     inputs:
       tag:
@@ -18,7 +18,7 @@ jobs:
   build:
     runs-on: ubuntu-latest
     env:
-      TAG: ${{ github.event.inputs.tag || github.ref_name }}
+      TAG: ${{ github.event.release.tag_name || github.event.inputs.tag || github.ref_name }}
     steps:
       - uses: actions/checkout@v4
 

@@ -46,9 +46,9 @@ In **Impostazioni → Aggiornamenti** si può disattivare il controllo, sceglier
 
 ## Rilasci (per lo sviluppatore)
 
-1. Scrivi le novità in `RELEASE_NOTES.md` e aggiorna `VERSION`
-2. Crea e invia il tag: `git tag v1.0.1 && git push origin v1.0.1`
-3. GitHub Actions compila, firma e pubblica l'APK nella Release: le auto lo ricevono al controllo successivo
+1. Carica le modifiche su `main` (aggiorna anche `VERSION`)
+2. Su GitHub: **Releases → Draft a new release**, crea il tag (es. `v1.0.1`), scrivi le novità e premi **Publish release**
+3. GitHub Actions compila e firma l'APK e lo allega alla Release in un paio di minuti: le auto lo ricevono al controllo successivo
 
 Il numero di versione viene dal tag (`v1.2.3` → versionCode `10203`).
 
