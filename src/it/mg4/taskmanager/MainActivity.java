@@ -59,13 +59,18 @@ public class MainActivity extends Activity {
     private List<Tasks.Entry> current = new ArrayList<Tasks.Entry>();
     private boolean loading;
 
+    private static String tr(String it, String en) {
+        return Lang.tr(it, en);
+    }
+
     private final AdbClient.AuthListener auth = new AdbClient.AuthListener() {
         @Override
         public void onWaitingForApproval() {
             main.post(new Runnable() {
                 @Override
                 public void run() {
-                    setStatus("Sullo schermo dell'auto conferma «Consentire il debug?» (spunta «Consenti sempre»)");
+                    setStatus(tr("Sullo schermo dell'auto conferma «Consentire il debug?» (spunta «Consenti sempre»)",
+                            "On the car screen tap «Allow debugging?» (check «Always allow»)"));
                 }
             });
         }
@@ -194,19 +199,19 @@ public class MainActivity extends Activity {
         titles.addView(status);
         header.addView(titles, lp(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1, 0));
 
-        header.addView(button("Aggiorna", BTN, new View.OnClickListener() {
+        header.addView(button(tr("Aggiorna", "Refresh"), BTN, new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 refresh();
             }
         }), lp(-2, -2, 0, dp(12)));
-        header.addView(button("Chiudi tutto", DANGER, new View.OnClickListener() {
+        header.addView(button(tr("Chiudi tutto", "Close all"), DANGER, new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 closeAll();
             }
         }), lp(-2, -2, 0, dp(12)));
-        header.addView(button("Impostazioni", BTN, new View.OnClickListener() {
+        header.addView(button(tr("Impostazioni", "Settings"), BTN, new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 showSettings();
@@ -227,7 +232,8 @@ public class MainActivity extends Activity {
         sv.addView(list);
         root.addView(sv, new LinearLayout.LayoutParams(-1, 0, 1));
 
-        TextView hint = text("Tocca un'app per aprirla · tieni premuto per escluderla da «Chiudi tutto»", 14, MUTED, false);
+        TextView hint = text(tr("Tocca un'app per aprirla · tieni premuto per escluderla da «Chiudi tutto»",
+                "Tap an app to open it · long-press to exclude it from «Close all»"), 14, MUTED, false);
         hint.setGravity(Gravity.CENTER);
         root.addView(hint);
         return root;
@@ -252,12 +258,12 @@ public class MainActivity extends Activity {
             if (e.launchable) apps++;
             if (e.rssKb > 0) kb += e.rssKb;
         }
-        String st = apps + (apps == 1 ? " app aperta" : " app aperte");
-        if (mode == Tasks.Result.SYSTEM) st += " · " + (kb / 1024) + " MB · modalità sistema";
-        else if (mode == Tasks.Result.ADB) st += " · " + (kb / 1024) + " MB · modalità completa (ADB)";
-        else st += " · modalità base";
+        String st = apps + (apps == 1 ? tr(" app aperta", " app open") : tr(" app aperte", " apps open"));
+        if (mode == Tasks.Result.SYSTEM) st += " · " + (kb / 1024) + tr(" MB · modalità sistema", " MB · system mode");
+        else if (mode == Tasks.Result.ADB) st += " · " + (kb / 1024) + tr(" MB · modalità completa (ADB)", " MB · full mode (ADB)");
+        else st += tr(" · modalità base", " · basic mode");
         int hidden = current.size() - vis.size();
-        if (hidden > 0) st += " · " + hidden + " di sistema nascoste";
+        if (hidden > 0) st += " · " + hidden + tr(" di sistema nascoste", " system hidden");
         setStatus(st);
     }
 
@@ -267,7 +273,7 @@ public class MainActivity extends Activity {
         updateStatus(vis);
         if (!adbMode) addSetupCard();
         if (vis.isEmpty()) {
-            TextView t = text("Nessuna app aperta", 22, MUTED, false);
+            TextView t = text(tr("Nessuna app aperta", "No apps open"), 22, MUTED, false);
             t.setGravity(Gravity.CENTER);
             t.setPadding(0, dp(60), 0, 0);
             list.addView(t, new LinearLayout.LayoutParams(-1, -2));
@@ -282,7 +288,8 @@ public class MainActivity extends Activity {
             if (!e.launchable && !bgHeaderDone) {
                 bgHeaderDone = true;
                 col = 0;
-                TextView h = text("Servizi in background (chiudili solo se sai cosa fanno)", 16, MUTED, true);
+                TextView h = text(tr("Servizi in background (chiudili solo se sai cosa fanno)",
+                        "Background services (close only if you know what they do)"), 16, MUTED, true);
                 h.setPadding(dp(4), dp(18), 0, dp(8));
                 list.addView(h);
             }
@@ -322,28 +329,29 @@ public class MainActivity extends Activity {
         LinearLayout texts = new LinearLayout(this);
         texts.setOrientation(LinearLayout.VERTICAL);
         texts.setPadding(dp(16), 0, dp(8), 0);
-        String tag = e.isProtected ? "  · esclusa" : (e.system && skipSystem() ? "  · sistema" : "");
+        String tag = e.isProtected ? tr("  · esclusa", "  · excluded")
+                : (e.system && skipSystem() ? tr("  · sistema", "  · system") : "");
         TextView name = text(e.label + tag, 20, TEXT, true);
         name.setSingleLine(true);
         texts.addView(name);
         StringBuilder sub = new StringBuilder();
-        if (e.foreground) sub.append("In primo piano · ");
-        if (e.system) sub.append("App di sistema · ");
+        if (e.foreground) sub.append(tr("In primo piano · ", "Foreground · "));
+        if (e.system) sub.append(tr("App di sistema · ", "System app · "));
         if (e.rssKb >= 0) sub.append(e.rssKb / 1024).append(" MB");
-        else if (sub.length() == 0) sub.append("Aperta da questa accensione");
-        if (e.processes > 1) sub.append(" · ").append(e.processes).append(" processi");
+        else if (sub.length() == 0) sub.append(tr("Aperta da questa accensione", "Open since power-on"));
+        if (e.processes > 1) sub.append(" · ").append(e.processes).append(tr(" processi", " processes"));
         if (sub.toString().endsWith(" · ")) sub.setLength(sub.length() - 3);
         sub.append("\n").append(e.pkg);
         TextView s = text(sub.toString(), 14, MUTED, false);
         texts.addView(s);
         c.addView(texts, new LinearLayout.LayoutParams(0, -2, 1));
 
-        c.addView(button("Chiudi", DANGER, new View.OnClickListener() {
+        c.addView(button(tr("Chiudi", "Close"), DANGER, new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 List<String> one = new ArrayList<String>();
                 one.add(e.pkg);
-                kill(one, e.label + " chiusa");
+                kill(one, e.label + tr(" chiusa", " closed"));
             }
         }));
 
@@ -352,7 +360,7 @@ public class MainActivity extends Activity {
             public void onClick(View v) {
                 Intent i = getPackageManager().getLaunchIntentForPackage(e.pkg);
                 if (i == null) {
-                    toast("Questa app non ha una schermata da aprire");
+                    toast(tr("Questa app non ha una schermata da aprire", "This app has no screen to open"));
                     return;
                 }
                 i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
@@ -360,7 +368,7 @@ public class MainActivity extends Activity {
                     startActivity(i);
                     finish();
                 } catch (Exception ex) {
-                    toast("Impossibile aprire l'app");
+                    toast(tr("Impossibile aprire l'app", "Couldn't open the app"));
                 }
             }
         });
@@ -368,7 +376,8 @@ public class MainActivity extends Activity {
             @Override
             public boolean onLongClick(View v) {
                 boolean p = Adb.toggleProtected(MainActivity.this, e.pkg);
-                toast(p ? e.label + " esclusa: «Chiudi tutto» la salterà" : e.label + " non è più esclusa");
+                toast(p ? e.label + tr(" esclusa: «Chiudi tutto» la salterà", " excluded: «Close all» will skip it")
+                        : e.label + tr(" non è più esclusa", " is no longer excluded"));
                 e.isProtected = p;
                 render();
                 return true;
@@ -394,28 +403,32 @@ public class MainActivity extends Activity {
         box.setOrientation(LinearLayout.VERTICAL);
         box.setBackground(round(CARD));
         box.setPadding(dp(24), dp(20), dp(24), dp(20));
-        box.addView(text("Completa la configurazione", 22, TEXT, true));
+        box.addView(text(tr("Completa la configurazione", "Finish setup"), 22, TEXT, true));
         StringBuilder b = new StringBuilder();
-        if (!a11y) b.append("• Accessibilità: attiva «Task Manager» per vedere le app aperte e chiuderle davvero ")
-                .append("(l'app preme da sola «Forza interruzione»).\n");
-        if (!usage) b.append("• Accesso ai dati di utilizzo: consenti a «Task Manager» di vedere quali app hai usato.\n");
-        b.append("\nSenza questi permessi può chiudere solo le app in background.");
+        if (!a11y) b.append(tr("• Accessibilità: attiva «Task Manager» per vedere le app aperte e chiuderle davvero (l'app preme da sola «Forza interruzione»).\n",
+                "• Accessibility: enable «Task Manager» to see open apps and really close them (the app taps «Force stop» by itself).\n"));
+        if (!usage) b.append(tr("• Accesso ai dati di utilizzo: consenti a «Task Manager» di vedere quali app hai usato.\n",
+                "• Usage access: allow «Task Manager» to see which apps you used.\n"));
+        b.append(tr("\nSenza questi permessi può chiudere solo le app in background.",
+                "\nWithout these permissions it can only close background apps."));
         TextView body = text(b.toString(), 16, MUTED, false);
         body.setPadding(0, dp(10), 0, dp(16));
         box.addView(body);
         LinearLayout btns = new LinearLayout(this);
-        if (!a11y) btns.addView(button("Attiva accessibilità", ACCENT, new View.OnClickListener() {
+        if (!a11y) btns.addView(button(tr("Attiva accessibilità", "Enable accessibility"), ACCENT, new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 if (!KeyService.openAccessibilitySettings(MainActivity.this))
-                    toast("Cerca «Accessibilità» nelle impostazioni dell'auto e attiva «Task Manager»");
+                    toast(tr("Cerca «Accessibilità» nelle impostazioni dell'auto e attiva «Task Manager»",
+                            "Find «Accessibility» in the car settings and enable «Task Manager»"));
             }
         }));
-        if (!usage) btns.addView(button("Consenti utilizzo", a11y ? ACCENT : BTN, new View.OnClickListener() {
+        if (!usage) btns.addView(button(tr("Consenti utilizzo", "Allow usage access"), a11y ? ACCENT : BTN, new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 if (!KeyService.openSettings(MainActivity.this, android.provider.Settings.ACTION_USAGE_ACCESS_SETTINGS))
-                    toast("Cerca «Accesso dati di utilizzo» nelle impostazioni dell'auto");
+                    toast(tr("Cerca «Accesso dati di utilizzo» nelle impostazioni dell'auto",
+                            "Find «Usage data access» in the car settings"));
             }
         }), lp(-2, -2, 0, a11y ? 0 : dp(12)));
         box.addView(btns);
@@ -448,7 +461,7 @@ public class MainActivity extends Activity {
     private void refresh() {
         if (loading) return;
         loading = true;
-        setStatus("Caricamento…");
+        setStatus(tr("Caricamento…", "Loading…"));
         final boolean showBg = Adb.prefs(this).getBoolean("show_bg", false);
         bg.execute(new Runnable() {
             @Override
@@ -484,18 +497,19 @@ public class MainActivity extends Activity {
             if (e.launchable && !isExcluded(e)) pkgs.add(e.pkg);
         }
         if (pkgs.isEmpty()) {
-            toast("Niente da chiudere");
+            toast(tr("Niente da chiudere", "Nothing to close"));
             return;
         }
-        kill(pkgs, pkgs.size() == 1 ? "1 app chiusa" : pkgs.size() + " app chiuse");
+        kill(pkgs, pkgs.size() == 1 ? tr("1 app chiusa", "1 app closed")
+                : pkgs.size() + tr(" app chiuse", " apps closed"));
     }
 
     private void kill(final List<String> pkgs, final String done) {
         if (KeyService.isBusy()) {
-            toast("Chiusura già in corso…");
+            toast(tr("Chiusura già in corso…", "Already closing…"));
             return;
         }
-        setStatus("Chiusura…");
+        setStatus(tr("Chiusura…", "Closing…"));
         bg.execute(new Runnable() {
             @Override
             public void run() {
@@ -523,7 +537,8 @@ public class MainActivity extends Activity {
                             }
                         });
                         if (!started) {
-                            toast("Chiuse solo in background: attiva l'accessibilità per chiuderle del tutto");
+                            toast(tr("Chiuse solo in background: attiva l'accessibilità per chiuderle del tutto",
+                                    "Closed in background only: enable accessibility to close them fully"));
                             refresh();
                         }
                     }
@@ -540,25 +555,29 @@ public class MainActivity extends Activity {
         v.setOrientation(LinearLayout.VERTICAL);
         v.setPadding(dp(24), dp(12), dp(24), dp(4));
 
-        v.addView(text("Modalità", 17, TEXT, true));
+        v.addView(text(tr("Modalità", "Mode"), 17, TEXT, true));
         String modeDesc;
         if (mode == Tasks.Result.SYSTEM)
-            modeDesc = "Sistema: l'app è firmata con la chiave dell'auto. Chiusura istantanea senza ADB, nessun permesso da attivare a mano.";
+            modeDesc = tr("Sistema: l'app è firmata con la chiave dell'auto. Chiusura istantanea senza ADB, nessun permesso da attivare a mano.",
+                    "System: the app is signed with the car key. Instant close without ADB, no permission to enable by hand.");
         else if (mode == Tasks.Result.ADB)
-            modeDesc = "Completa: ADB dell'auto raggiungibile, chiusura istantanea e aggiornamenti silenziosi.";
+            modeDesc = tr("Completa: ADB dell'auto raggiungibile, chiusura istantanea e aggiornamenti silenziosi.",
+                    "Full: car ADB reachable, instant close and silent updates.");
         else
-            modeDesc = "Base: né firma di sistema né ADB. Le app si chiudono tramite accessibilità.";
+            modeDesc = tr("Base: né firma di sistema né ADB. Le app si chiudono tramite accessibilità.",
+                    "Basic: neither system signature nor ADB. Apps are closed via accessibility.");
         v.addView(text(modeDesc, 15, MUTED, false));
         LinearLayout.LayoutParams a11yP = new LinearLayout.LayoutParams(-2, -2);
         a11yP.topMargin = dp(8);
-        v.addView(button(KeyService.running ? "Accessibilità attiva" : "Attiva accessibilità", BTN,
+        v.addView(button(KeyService.running ? tr("Accessibilità attiva", "Accessibility on")
+                        : tr("Attiva accessibilità", "Enable accessibility"), BTN,
                 new View.OnClickListener() {
                     @Override
                     public void onClick(View x) {
                         KeyService.openAccessibilitySettings(MainActivity.this);
                     }
                 }), a11yP);
-        TextView adbT = text("Indirizzo ADB (avanzato)", 15, MUTED, false);
+        TextView adbT = text(tr("Indirizzo ADB (avanzato)", "ADB address (advanced)"), 15, MUTED, false);
         adbT.setPadding(0, dp(12), 0, 0);
         v.addView(adbT);
         LinearLayout hp = new LinearLayout(this);
@@ -573,15 +592,16 @@ public class MainActivity extends Activity {
         v.addView(hp);
 
         final CheckBox showBg = new CheckBox(this);
-        showBg.setText("Mostra anche i servizi in background (avanzato)");
+        showBg.setText(tr("Mostra anche i servizi in background (avanzato)", "Also show background services (advanced)"));
         showBg.setChecked(p.getBoolean("show_bg", false));
         v.addView(showBg);
 
-        TextView ct = text("«Chiudi tutto»", 17, TEXT, true);
+        TextView ct = text(tr("«Chiudi tutto»", "«Close all»"), 17, TEXT, true);
         ct.setPadding(0, dp(18), 0, 0);
         v.addView(ct);
         final CheckBox skipSys = new CheckBox(this);
-        skipSys.setText("Escludi e nascondi le app di sistema (radio, navigatore, app dell'auto…)");
+        skipSys.setText(tr("Escludi e nascondi le app di sistema (radio, navigatore, app dell'auto…)",
+                "Exclude and hide system apps (radio, navigation, car apps…)"));
         skipSys.setChecked(skipSystem());
         skipSys.setOnCheckedChangeListener(new android.widget.CompoundButton.OnCheckedChangeListener() {
             @Override
@@ -592,24 +612,25 @@ public class MainActivity extends Activity {
         });
         v.addView(skipSys);
         int nEx = Adb.protectedApps(this).size();
-        TextView exInfo = text(nEx == 0 ? "Nessuna app esclusa manualmente"
-                : (nEx == 1 ? "1 app esclusa manualmente" : nEx + " app escluse manualmente"), 15, MUTED, false);
-        v.addView(exInfo);
+        String exText = nEx == 0 ? tr("Nessuna app esclusa manualmente", "No apps excluded manually")
+                : (nEx == 1 ? tr("1 app esclusa manualmente", "1 app excluded manually")
+                : nEx + tr(" app escluse manualmente", " apps excluded manually"));
+        v.addView(text(exText, 15, MUTED, false));
         LinearLayout.LayoutParams exp = new LinearLayout.LayoutParams(-2, -2);
         exp.topMargin = dp(8);
-        v.addView(button("Scegli le app da escludere…", BTN, new View.OnClickListener() {
+        v.addView(button(tr("Scegli le app da escludere…", "Choose apps to exclude…"), BTN, new View.OnClickListener() {
             @Override
             public void onClick(View x) {
                 chooseExcluded();
             }
         }), exp);
 
-        TextView ut = text("Aggiornamenti", 17, TEXT, true);
+        TextView ut = text(tr("Aggiornamenti", "Updates"), 17, TEXT, true);
         ut.setPadding(0, dp(18), 0, 0);
         v.addView(ut);
-        v.addView(text("Versione installata: " + Updater.currentName(this), 15, MUTED, false));
+        v.addView(text(tr("Versione installata: ", "Installed version: ") + Updater.currentName(this), 15, MUTED, false));
         final CheckBox autoUp = new CheckBox(this);
-        autoUp.setText("Controlla automaticamente se ci sono aggiornamenti");
+        autoUp.setText(tr("Controlla automaticamente se ci sono aggiornamenti", "Automatically check for updates"));
         autoUp.setChecked(Updater.autoEnabled(this));
         autoUp.setOnCheckedChangeListener(new android.widget.CompoundButton.OnCheckedChangeListener() {
             @Override
@@ -619,7 +640,8 @@ public class MainActivity extends Activity {
         });
         v.addView(autoUp);
         final CheckBox autoInst = new CheckBox(this);
-        autoInst.setText("Installa gli aggiornamenti da solo (senza ADB serve un tocco su «Installa»)");
+        autoInst.setText(tr("Installa gli aggiornamenti da solo (senza ADB serve un tocco su «Installa»)",
+                "Install updates automatically (without ADB a tap on «Install» is needed)"));
         autoInst.setChecked(Updater.autoInstall(this));
         autoInst.setOnCheckedChangeListener(new android.widget.CompoundButton.OnCheckedChangeListener() {
             @Override
@@ -630,28 +652,31 @@ public class MainActivity extends Activity {
         v.addView(autoInst);
         LinearLayout.LayoutParams upp = new LinearLayout.LayoutParams(-2, -2);
         upp.topMargin = dp(8);
-        v.addView(button("Controlla ora", BTN, new View.OnClickListener() {
+        v.addView(button(tr("Controlla ora", "Check now"), BTN, new View.OnClickListener() {
             @Override
             public void onClick(View x) {
                 checkUpdates(true);
             }
         }), upp);
 
-        TextView kt = text("Tasto al volante", 17, TEXT, true);
+        TextView kt = text(tr("Tasto al volante", "Steering-wheel button"), 17, TEXT, true);
         kt.setPadding(0, dp(18), 0, 0);
         v.addView(kt);
         String desc = p.getString("key_desc", null);
-        v.addView(text(desc == null ? "Nessun tasto impostato" : "Impostato: " + desc
-                + (KeyHub.SRC_A11Y.equals(p.getString("key_src", null)) ? "  (via accessibilità)" : "  (via getevent)"), 15, MUTED, false));
+        String keyLine = desc == null ? tr("Nessun tasto impostato", "No button set")
+                : tr("Impostato: ", "Set: ") + desc + (KeyHub.SRC_A11Y.equals(p.getString("key_src", null))
+                ? tr("  (via accessibilità)", "  (via accessibility)") : tr("  (via getevent)", "  (via getevent)"));
+        v.addView(text(keyLine, 15, MUTED, false));
 
         final CheckBox longPress = new CheckBox(this);
-        longPress.setText("Solo con pressione lunga (la pressione breve mantiene la funzione originale)");
+        longPress.setText(tr("Solo con pressione lunga (la pressione breve mantiene la funzione originale)",
+                "Long-press only (a short press keeps the original function)"));
         longPress.setChecked(p.getBoolean("key_long", false));
         v.addView(longPress);
 
         final AlertDialog[] dlg = new AlertDialog[1];
         LinearLayout kb = new LinearLayout(this);
-        kb.addView(button("Imposta tasto…", ACCENT, new View.OnClickListener() {
+        kb.addView(button(tr("Imposta tasto…", "Set button…"), ACCENT, new View.OnClickListener() {
             @Override
             public void onClick(View x) {
                 saveSettings(host, port, showBg, longPress);
@@ -659,12 +684,12 @@ public class MainActivity extends Activity {
                 learnKey();
             }
         }));
-        kb.addView(button("Rimuovi", BTN, new View.OnClickListener() {
+        kb.addView(button(tr("Rimuovi", "Remove"), BTN, new View.OnClickListener() {
             @Override
             public void onClick(View x) {
                 KeyHub.clear(MainActivity.this);
                 KeyMonitorService.stop(MainActivity.this);
-                toast("Tasto rimosso");
+                toast(tr("Tasto rimosso", "Button removed"));
                 dlg[0].dismiss();
             }
         }), lp(-2, -2, 0, dp(12)));
@@ -675,9 +700,9 @@ public class MainActivity extends Activity {
         ScrollView sv = new ScrollView(this);
         sv.addView(v);
         dlg[0] = new AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert)
-                .setTitle("Impostazioni")
+                .setTitle(tr("Impostazioni", "Settings"))
                 .setView(sv)
-                .setPositiveButton("Salva", new DialogInterface.OnClickListener() {
+                .setPositiveButton(tr("Salva", "Save"), new DialogInterface.OnClickListener() {
                     @Override
                     public void onClick(DialogInterface d, int w) {
                         saveSettings(host, port, showBg, longPress);
@@ -685,7 +710,7 @@ public class MainActivity extends Activity {
                         refresh();
                     }
                 })
-                .setNegativeButton("Annulla", null)
+                .setNegativeButton(tr("Annulla", "Cancel"), null)
                 .create();
         dlg[0].show();
     }
@@ -693,7 +718,7 @@ public class MainActivity extends Activity {
     // ================================================================== aggiornamenti
 
     private void checkUpdates(final boolean manual) {
-        if (manual) toast("Controllo aggiornamenti…");
+        if (manual) toast(tr("Controllo aggiornamenti…", "Checking for updates…"));
         bg.execute(new Runnable() {
             @Override
             public void run() {
@@ -704,14 +729,15 @@ public class MainActivity extends Activity {
                         public void run() {
                             if (isFinishing()) return;
                             if (r != null) offerUpdate(r);
-                            else if (manual) toast("Hai già l'ultima versione (" + Updater.currentName(MainActivity.this) + ")");
+                            else if (manual) toast(tr("Hai già l'ultima versione (", "You already have the latest version (")
+                                    + Updater.currentName(MainActivity.this) + ")");
                         }
                     });
                 } catch (final IOException e) {
                     if (manual) main.post(new Runnable() {
                         @Override
                         public void run() {
-                            toast("Impossibile controllare: " + e.getMessage());
+                            toast(tr("Impossibile controllare: ", "Couldn't check: ") + e.getMessage());
                         }
                     });
                 }
@@ -722,27 +748,28 @@ public class MainActivity extends Activity {
     private void offerUpdate(final Updater.Release r) {
         String notes = r.notes == null ? "" : r.notes.trim();
         if (notes.length() > 700) notes = notes.substring(0, 700) + "…";
+        final String fnotes = notes;
         new AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert)
-                .setTitle("Aggiornamento disponibile: " + r.tag)
-                .setMessage("Versione installata: " + Updater.currentName(this)
-                        + (notes.isEmpty() ? "" : "\n\nNovità:\n" + notes))
-                .setPositiveButton("Aggiorna", new DialogInterface.OnClickListener() {
+                .setTitle(tr("Aggiornamento disponibile: ", "Update available: ") + r.tag)
+                .setMessage(tr("Versione installata: ", "Installed version: ") + Updater.currentName(this)
+                        + (fnotes.isEmpty() ? "" : tr("\n\nNovità:\n", "\n\nWhat's new:\n") + fnotes))
+                .setPositiveButton(tr("Aggiorna", "Update"), new DialogInterface.OnClickListener() {
                     @Override
                     public void onClick(DialogInterface d, int w) {
                         if (Updater.pending(MainActivity.this) != null) installDownloaded(r);
                         else runUpdate(r);
                     }
                 })
-                .setNegativeButton("Più tardi", null)
+                .setNegativeButton(tr("Più tardi", "Later"), null)
                 .show();
     }
 
     /** Aggiornamento già scaricato in background: installa subito. */
     private void installDownloaded(final Updater.Release r) {
         final AlertDialog dlg = new AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert)
-                .setTitle("Aggiornamento a " + r.tag)
-                .setMessage("Installazione in corso…")
-                .setNegativeButton("Chiudi", null)
+                .setTitle(tr("Aggiornamento a ", "Updating to ") + r.tag)
+                .setMessage(tr("Installazione in corso…", "Installing…"))
+                .setNegativeButton(tr("Chiudi", "Close"), null)
                 .create();
         dlg.show();
         bg.execute(new Runnable() {
@@ -761,23 +788,25 @@ public class MainActivity extends Activity {
                 @Override
                 public void run() {
                     dlg.setMessage(silent
-                            ? "Installazione in corso…\nL'app si chiuderà e si riaprirà da sola."
-                            : "Conferma con «Installa» nella schermata di Android.\nAl termine riapri il Task Manager.");
+                            ? tr("Installazione in corso…\nL'app si chiuderà e si riaprirà da sola.",
+                            "Installing…\nThe app will close and reopen by itself.")
+                            : tr("Conferma con «Installa» nella schermata di Android.\nAl termine riapri il Task Manager.",
+                            "Confirm with «Install» on the Android screen.\nReopen Task Manager when done."));
                 }
             });
             if (silent) main.postDelayed(new Runnable() {
                 @Override
                 public void run() {
                     String log = Updater.readLog(MainActivity.this);
-                    dlg.setMessage("L'installazione non è riuscita.\n\n"
-                            + (log == null || log.isEmpty() ? "Nessun dettaglio disponibile." : log));
+                    dlg.setMessage(tr("L'installazione non è riuscita.\n\n", "Installation failed.\n\n")
+                            + (log == null || log.isEmpty() ? tr("Nessun dettaglio disponibile.", "No details available.") : log));
                 }
             }, 40000);
         } catch (final IOException e) {
             main.post(new Runnable() {
                 @Override
                 public void run() {
-                    dlg.setMessage("Aggiornamento non riuscito: " + e.getMessage());
+                    dlg.setMessage(tr("Aggiornamento non riuscito: ", "Update failed: ") + e.getMessage());
                 }
             });
         }
@@ -785,9 +814,9 @@ public class MainActivity extends Activity {
 
     private void runUpdate(final Updater.Release r) {
         final AlertDialog dlg = new AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert)
-                .setTitle("Aggiornamento a " + r.tag)
-                .setMessage("Download in corso…")
-                .setNegativeButton("Chiudi", null)
+                .setTitle(tr("Aggiornamento a ", "Updating to ") + r.tag)
+                .setMessage(tr("Download in corso…", "Downloading…"))
+                .setNegativeButton(tr("Chiudi", "Close"), null)
                 .setCancelable(false)
                 .create();
         dlg.show();
@@ -801,7 +830,7 @@ public class MainActivity extends Activity {
                             main.post(new Runnable() {
                                 @Override
                                 public void run() {
-                                    dlg.setMessage("Download in corso… " + pct + "%");
+                                    dlg.setMessage(tr("Download in corso… ", "Downloading… ") + pct + "%");
                                 }
                             });
                         }
@@ -812,7 +841,7 @@ public class MainActivity extends Activity {
                     main.post(new Runnable() {
                         @Override
                         public void run() {
-                            dlg.setMessage("Aggiornamento non riuscito: " + e.getMessage());
+                            dlg.setMessage(tr("Aggiornamento non riuscito: ", "Update failed: ") + e.getMessage());
                         }
                     });
                 }
@@ -849,18 +878,18 @@ public class MainActivity extends Activity {
         final boolean[] checked = new boolean[pkgs.size()];
         for (int i = 0; i < pkgs.size(); i++) {
             String pkg = pkgs.get(i);
-            items[i] = labels.get(pkg) + (sys.contains(pkg) ? "   (sistema)" : "");
+            items[i] = labels.get(pkg) + (sys.contains(pkg) ? tr("   (sistema)", "   (system)") : "");
             checked[i] = prot.contains(pkg);
         }
         new AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert)
-                .setTitle("Escludi da «Chiudi tutto»")
+                .setTitle(tr("Escludi da «Chiudi tutto»", "Exclude from «Close all»"))
                 .setMultiChoiceItems(items, checked, new DialogInterface.OnMultiChoiceClickListener() {
                     @Override
                     public void onClick(DialogInterface d, int which, boolean on) {
                         checked[which] = on;
                     }
                 })
-                .setPositiveButton("Salva", new DialogInterface.OnClickListener() {
+                .setPositiveButton(tr("Salva", "Save"), new DialogInterface.OnClickListener() {
                     @Override
                     public void onClick(DialogInterface d, int w) {
                         java.util.Set<String> s = new java.util.HashSet<String>(prot);
@@ -871,10 +900,10 @@ public class MainActivity extends Activity {
                         Adb.prefs(MainActivity.this).edit().putStringSet("protected", s).apply();
                         for (Tasks.Entry e : current) e.isProtected = s.contains(e.pkg);
                         render();
-                        toast("Esclusioni salvate");
+                        toast(tr("Esclusioni salvate", "Exclusions saved"));
                     }
                 })
-                .setNegativeButton("Annulla", null)
+                .setNegativeButton(tr("Annulla", "Cancel"), null)
                 .show();
     }
 
@@ -934,9 +963,9 @@ public class MainActivity extends Activity {
 
     private void learnKey() {
         final AlertDialog wait = new AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert)
-                .setTitle("Imposta tasto al volante")
-                .setMessage("Preparazione…")
-                .setNegativeButton("Annulla", new DialogInterface.OnClickListener() {
+                .setTitle(tr("Imposta tasto al volante", "Set steering-wheel button"))
+                .setMessage(tr("Preparazione…", "Preparing…"))
+                .setNegativeButton(tr("Annulla", "Cancel"), new DialogInterface.OnClickListener() {
                     @Override
                     public void onClick(DialogInterface d, int w) {
                         KeyHub.cancelLearning();
@@ -952,8 +981,8 @@ public class MainActivity extends Activity {
                 if (!KeyHub.isLearning()) return;
                 KeyHub.cancelLearning();
                 if (!KeyMonitorService.needed(MainActivity.this)) KeyMonitorService.stop(MainActivity.this);
-                wait.setMessage("Nessun tasto rilevato.\n\nProva con un altro tasto: alcuni tasti del volante "
-                        + "vengono gestiti direttamente dall'auto e non arrivano ad Android.");
+                wait.setMessage(tr("Nessun tasto rilevato.\n\nProva con un altro tasto: alcuni tasti del volante vengono gestiti direttamente dall'auto e non arrivano ad Android.",
+                        "No button detected.\n\nTry another button: some steering-wheel buttons are handled directly by the car and never reach Android."));
             }
         };
         bg.execute(new Runnable() {
@@ -970,8 +999,8 @@ public class MainActivity extends Activity {
                     @Override
                     public void run() {
                         if (error != null && !KeyService.running) {
-                            wait.setMessage("Per usare il tasto al volante attiva «Task Manager» in "
-                                    + "Impostazioni → Accessibilità, poi torna qui e riprova.");
+                            wait.setMessage(tr("Per usare il tasto al volante attiva «Task Manager» in Impostazioni → Accessibilità, poi torna qui e riprova.",
+                                    "To use the steering-wheel button, enable «Task Manager» in Settings → Accessibility, then come back and try again."));
                             KeyService.openAccessibilitySettings(MainActivity.this);
                             return;
                         }
@@ -982,16 +1011,18 @@ public class MainActivity extends Activity {
                                 KeyHub.save(MainActivity.this, src, id, d);
                                 if (KeyHub.SRC_RAW.equals(src)) KeyMonitorService.start(MainActivity.this);
                                 else KeyMonitorService.stop(MainActivity.this);
-                                wait.setMessage("Tasto impostato: " + d + "\n\n"
+                                wait.setMessage(tr("Tasto impostato: ", "Button set: ") + d + "\n\n"
                                         + (KeyHub.SRC_A11Y.equals(src)
-                                        ? "Premendolo aprirai e chiuderai il Task Manager."
-                                        : "Premendolo aprirai e chiuderai il Task Manager. Nota: questo tasto "
-                                        + "manterrà anche la sua funzione originale."));
+                                        ? tr("Premendolo aprirai e chiuderai il Task Manager.",
+                                        "Pressing it will open and close Task Manager.")
+                                        : tr("Premendolo aprirai e chiuderai il Task Manager. Nota: questo tasto manterrà anche la sua funzione originale.",
+                                        "Pressing it will open and close Task Manager. Note: this button also keeps its original function.")));
                                 wait.getButton(DialogInterface.BUTTON_NEGATIVE).setText("OK");
                             }
                         });
                         KeyMonitorService.start(MainActivity.this);
-                        wait.setMessage("Premi ora sul volante il tasto che vuoi usare…\n(hai 20 secondi)");
+                        wait.setMessage(tr("Premi ora sul volante il tasto che vuoi usare…\n(hai 20 secondi)",
+                                "Now press the steering-wheel button you want to use…\n(you have 20 seconds)"));
                         main.postDelayed(timeout, 20000);
                     }
                 });

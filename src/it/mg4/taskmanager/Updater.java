@@ -112,7 +112,7 @@ public final class Updater {
         try {
             int code = h.getResponseCode();
             if (code == 404) return null; // nessuna release pubblicata
-            if (code != 200) throw new IOException("GitHub ha risposto " + code);
+            if (code != 200) throw new IOException(Lang.tr("GitHub ha risposto ", "GitHub responded ") + code);
             String body = readAll(h.getInputStream());
             JSONObject o = new JSONObject(body);
             Release r = new Release();
@@ -132,7 +132,7 @@ public final class Updater {
             }
             return r;
         } catch (org.json.JSONException e) {
-            throw new IOException("Risposta di GitHub non valida");
+            throw new IOException(Lang.tr("Risposta di GitHub non valida", "Invalid response from GitHub"));
         } finally {
             h.disconnect();
         }
@@ -140,11 +140,11 @@ public final class Updater {
 
     public static File download(Context c, Release r, Progress p) throws IOException {
         File dir = c.getExternalCacheDir();
-        if (dir == null) throw new IOException("Memoria non disponibile");
+        if (dir == null) throw new IOException(Lang.tr("Memoria non disponibile", "Storage not available"));
         File out = new File(dir, "update.apk");
         HttpURLConnection h = open(r.apkUrl);
         try {
-            if (h.getResponseCode() != 200) throw new IOException("Download fallito (" + h.getResponseCode() + ")");
+            if (h.getResponseCode() != 200) throw new IOException(Lang.tr("Download fallito (", "Download failed (") + h.getResponseCode() + ")");
             long total = r.size > 0 ? r.size : h.getContentLength();
             InputStream in = h.getInputStream();
             OutputStream os = new FileOutputStream(out);
@@ -160,7 +160,7 @@ public final class Updater {
                         if (pct != lastPct) p.onProgress(lastPct = pct);
                     }
                 }
-                if (r.size > 0 && done != r.size) throw new IOException("Download incompleto");
+                if (r.size > 0 && done != r.size) throw new IOException(Lang.tr("Download incompleto", "Incomplete download"));
             } finally {
                 os.close();
                 in.close();

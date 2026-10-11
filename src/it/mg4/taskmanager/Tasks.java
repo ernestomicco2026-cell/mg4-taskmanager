@@ -73,6 +73,30 @@ public final class Tasks {
     private Tasks() {
     }
 
+    /** Cache di etichetta e icona per pacchetto: loadIcon è lento, lo facciamo una volta sola. */
+    private static final Map<String, Object[]> META = new HashMap<String, Object[]>();
+
+    static void fillMeta(PackageManager pm, String pkg, ApplicationInfo ai, Entry en) {
+        Object[] m;
+        synchronized (META) {
+            m = META.get(pkg);
+        }
+        if (m == null) {
+            CharSequence label = ai.loadLabel(pm);
+            Drawable icon = null;
+            try {
+                icon = ai.loadIcon(pm);
+            } catch (Exception ignored) {
+            }
+            m = new Object[]{label, icon};
+            synchronized (META) {
+                META.put(pkg, m);
+            }
+        }
+        en.label = (CharSequence) m[0];
+        en.icon = (Drawable) m[1];
+    }
+
     // ================================================================== elenco
 
     public static Result list(Context ctx, boolean includeBackground, AdbClient.AuthListener l) {
@@ -113,11 +137,7 @@ public final class Tasks {
     private static Entry entry(Context ctx, PackageManager pm, String pkg, ApplicationInfo ai, boolean launchable) {
         Entry en = new Entry();
         en.pkg = pkg;
-        en.label = ai.loadLabel(pm);
-        try {
-            en.icon = ai.loadIcon(pm);
-        } catch (Exception ignored) {
-        }
+        fillMeta(pm, pkg, ai, en);
         en.launchable = launchable;
         en.system = (ai.flags & ApplicationInfo.FLAG_SYSTEM) != 0;
         en.isProtected = Adb.protectedApps(ctx).contains(pkg);

@@ -1,10 +1,13 @@
-MG4 Task Manager 1.1
+MG4 Task Manager 1.2
 
-Due edizioni:
-- **Normale** (`MG4-TaskManager.apk`): chiusura istantanea con ADB attivo, altrimenti modalità base via accessibilità.
-- **Sistema** (`MG4-TaskManager-system.apk`): firmata con la chiave platform dell'auto. Chiusura istantanea e lista completa delle app SENZA ADB e senza permessi da attivare a mano. Gira come app di sistema.
+- App bilingue italiano/inglese, in base alla lingua di sistema
+- Più veloce: cache di icone ed etichette, lettura RAM in un'unica chiamata
+- Invariato: due edizioni (normale + sistema), esclusione app di sistema, tasto al volante, aggiornamenti dalle Release
 
-Note:
-- L'edizione di sistema funziona perché l'infotainment MG4 è firmato con la chiave platform pubblica di AOSP.
-- Installa UNA sola delle due edizioni: hanno firme diverse, per passare da una all'altra va disinstallata la precedente.
-- Resto invariato: esclusione app di sistema, tasto al volante, aggiornamenti dalle Release.
+---
+
+MG4 Task Manager 1.2
+
+- Bilingual Italian/English, following the system language
+- Faster: icon and label cache, memory read in a single call
+- Unchanged: two editions (normal + system), system-app exclusion, steering-wheel button, updates from Releases

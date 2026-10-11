@@ -91,15 +91,15 @@ public class UpdateJobService extends JobService {
 
     private static void notifyReady(Context c, Updater.Release r) {
         NotificationManager nm = (NotificationManager) c.getSystemService(NOTIFICATION_SERVICE);
-        nm.createNotificationChannel(new NotificationChannel("updates", "Aggiornamenti",
+        nm.createNotificationChannel(new NotificationChannel("updates", Lang.tr("Aggiornamenti", "Updates"),
                 NotificationManager.IMPORTANCE_DEFAULT));
         Intent open = new Intent(c, MainActivity.class).putExtra(MainActivity.EXTRA_INSTALL_UPDATE, true)
                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
         PendingIntent pi = PendingIntent.getActivity(c, 1, open, PendingIntent.FLAG_UPDATE_CURRENT);
         Notification n = new Notification.Builder(c, "updates")
                 .setSmallIcon(KeyMonitorService.ICON)
-                .setContentTitle("Task Manager " + r.tag + " pronto")
-                .setContentText("Tocca per installare l'aggiornamento")
+                .setContentTitle("Task Manager " + r.tag + Lang.tr(" pronto", " ready"))
+                .setContentText(Lang.tr("Tocca per installare l'aggiornamento", "Tap to install the update"))
                 .setContentIntent(pi)
                 .setAutoCancel(true)
                 .build();

@@ -39,9 +39,11 @@ public final class SysPriv {
         Map<String, Tasks.Entry> byPkg = new HashMap<String, Tasks.Entry>();
         List<ActivityManager.RunningAppProcessInfo> procs = am.getRunningAppProcesses();
         if (procs == null) return new ArrayList<Tasks.Entry>();
+        java.util.Map<Integer, Long> mem = memoryBatch(am, procs);
         for (ActivityManager.RunningAppProcessInfo p : procs) {
             if (p.pkgList == null) continue;
-            long rssKb = memoryKb(am, p.pid);
+            Long rssVal = mem.get(p.pid);
+            long rssKb = rssVal == null ? 0 : rssVal;
             for (String pkg : p.pkgList) {
                 if (exclude.contains(pkg)) continue;
                 boolean canLaunch = launchable.contains(pkg);
@@ -57,11 +59,7 @@ public final class SysPriv {
                 if (en == null) {
                     en = new Tasks.Entry();
                     en.pkg = pkg;
-                    en.label = ai.loadLabel(pm);
-                    try {
-                        en.icon = ai.loadIcon(pm);
-                    } catch (Exception ignored) {
-                    }
+                    Tasks.fillMeta(pm, pkg, ai, en);
                     en.launchable = canLaunch;
                     en.system = (ai.flags & ApplicationInfo.FLAG_SYSTEM) != 0;
                     en.isProtected = prot.contains(pkg);
@@ -76,13 +74,19 @@ public final class SysPriv {
         return new ArrayList<Tasks.Entry>(byPkg.values());
     }
 
-    private static long memoryKb(ActivityManager am, int pid) {
+    /** Una sola chiamata binder per tutti i processi, invece di una per pid. */
+    private static java.util.Map<Integer, Long> memoryBatch(ActivityManager am, List<ActivityManager.RunningAppProcessInfo> procs) {
+        java.util.Map<Integer, Long> out = new HashMap<Integer, Long>();
+        int[] pids = new int[procs.size()];
+        for (int i = 0; i < procs.size(); i++) pids[i] = procs.get(i).pid;
         try {
-            Debug.MemoryInfo[] mi = am.getProcessMemoryInfo(new int[]{pid});
-            if (mi != null && mi.length > 0) return mi[0].getTotalPss();
+            Debug.MemoryInfo[] mi = am.getProcessMemoryInfo(pids);
+            if (mi != null) for (int i = 0; i < mi.length && i < pids.length; i++) {
+                out.put(pids[i], (long) mi[i].getTotalPss());
+            }
         } catch (Exception ignored) {
         }
-        return 0;
+        return out;
     }
 
     private static String foregroundPackage(ActivityManager am) {
