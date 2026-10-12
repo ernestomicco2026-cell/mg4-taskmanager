@@ -92,7 +92,7 @@ public final class Updater {
     /** Ultima release, oppure null se non ce n'è una più nuova di quella installata. */
     public static Release checkNewer(Context c) throws IOException {
         Adb.prefs(c).edit().putLong("update_last_check", System.currentTimeMillis()).apply();
-        Release r = fetchLatest();
+        Release r = fetchLatest(isSystemEdition(c));
         if (r == null || r.apkUrl == null || r.code <= currentCode(c)) return null;
         return r;
     }
@@ -106,13 +106,34 @@ public final class Updater {
         return h;
     }
 
-    static Release fetchLatest() throws IOException {
+    /**
+     * True se questa copia è l'edizione di sistema (firmata con la chiave platform, la stessa del
+     * pacchetto "android"). Serve a scaricare l'APK giusto: con una firma diversa l'aggiornamento
+     * non si installerebbe.
+     */
+    public static boolean isSystemEdition(Context c) {
+        try {
+            return c.getPackageManager().checkSignatures("android", c.getPackageName())
+                    == android.content.pm.PackageManager.SIGNATURE_MATCH;
+        } catch (Exception e) {
+            return SysPriv.available(c);
+        }
+    }
+
+    /** L'APK della Release per l'edizione indicata ("...-system.apk" oppure l'altro). */
+    static boolean assetMatches(String name, boolean system) {
+        String n = name.toLowerCase(java.util.Locale.ROOT);
+        return n.endsWith(".apk") && n.contains("system") == system;
+    }
+
+    static Release fetchLatest(boolean systemEdition) throws IOException {
         HttpURLConnection h = open(API);
         h.setRequestProperty("Accept", "application/vnd.github+json");
         try {
             int code = h.getResponseCode();
             if (code == 404) return null; // nessuna release pubblicata
-            if (code != 200) throw new IOException(Lang.tr("GitHub ha risposto ", "GitHub responded ") + code);
+            if (code != 200) throw new IOException(Lang.tr("GitHub ha risposto ", "GitHub responded ",
+                "GitHub ha respondido ", "O GitHub respondeu ", "GitHub a répondu ", "GitHub hat geantwortet: ") + code);
             String body = readAll(h.getInputStream());
             JSONObject o = new JSONObject(body);
             Release r = new Release();
@@ -123,7 +144,7 @@ public final class Updater {
             if (assets != null) {
                 for (int i = 0; i < assets.length(); i++) {
                     JSONObject a = assets.getJSONObject(i);
-                    if (a.optString("name", "").toLowerCase().endsWith(".apk")) {
+                    if (assetMatches(a.optString("name", ""), systemEdition)) {
                         r.apkUrl = a.optString("browser_download_url", null);
                         r.size = a.optLong("size", 0);
                         break;
@@ -132,7 +153,8 @@ public final class Updater {
             }
             return r;
         } catch (org.json.JSONException e) {
-            throw new IOException(Lang.tr("Risposta di GitHub non valida", "Invalid response from GitHub"));
+            throw new IOException(Lang.tr("Risposta di GitHub non valida", "Invalid response from GitHub",
+                "Respuesta de GitHub no válida", "Resposta do GitHub inválida", "Réponse de GitHub non valide", "Ungültige Antwort von GitHub"));
         } finally {
             h.disconnect();
         }
@@ -140,11 +162,13 @@ public final class Updater {
 
     public static File download(Context c, Release r, Progress p) throws IOException {
         File dir = c.getExternalCacheDir();
-        if (dir == null) throw new IOException(Lang.tr("Memoria non disponibile", "Storage not available"));
+        if (dir == null) throw new IOException(Lang.tr("Memoria non disponibile", "Storage not available",
+                "Almacenamiento no disponible", "Armazenamento não disponível", "Stockage non disponible", "Speicher nicht verfügbar"));
         File out = new File(dir, "update.apk");
         HttpURLConnection h = open(r.apkUrl);
         try {
-            if (h.getResponseCode() != 200) throw new IOException(Lang.tr("Download fallito (", "Download failed (") + h.getResponseCode() + ")");
+            if (h.getResponseCode() != 200) throw new IOException(Lang.tr("Download fallito (", "Download failed (",
+                "Descarga fallida (", "Falha no download (", "Échec du téléchargement (", "Download fehlgeschlagen (") + h.getResponseCode() + ")");
             long total = r.size > 0 ? r.size : h.getContentLength();
             InputStream in = h.getInputStream();
             OutputStream os = new FileOutputStream(out);
@@ -160,7 +184,8 @@ public final class Updater {
                         if (pct != lastPct) p.onProgress(lastPct = pct);
                     }
                 }
-                if (r.size > 0 && done != r.size) throw new IOException(Lang.tr("Download incompleto", "Incomplete download"));
+                if (r.size > 0 && done != r.size) throw new IOException(Lang.tr("Download incompleto", "Incomplete download",
+                "Descarga incompleta", "Download incompleto", "Téléchargement incomplet", "Download unvollständig"));
             } finally {
                 os.close();
                 in.close();

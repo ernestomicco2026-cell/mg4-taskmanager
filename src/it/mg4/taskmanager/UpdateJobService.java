@@ -67,6 +67,7 @@ public class UpdateJobService extends JobService {
     }
 
     static void runCheck(Context c) throws Exception {
+        Lang.init(c);
         if (!Updater.autoEnabled(c)) return;
         Updater.Release r = Updater.pending(c);
         if (r == null) {
@@ -91,15 +92,18 @@ public class UpdateJobService extends JobService {
 
     private static void notifyReady(Context c, Updater.Release r) {
         NotificationManager nm = (NotificationManager) c.getSystemService(NOTIFICATION_SERVICE);
-        nm.createNotificationChannel(new NotificationChannel("updates", Lang.tr("Aggiornamenti", "Updates"),
+        nm.createNotificationChannel(new NotificationChannel("updates", Lang.tr("Aggiornamenti", "Updates",
+                "Actualizaciones", "Atualizações", "Mises à jour", "Updates"),
                 NotificationManager.IMPORTANCE_DEFAULT));
         Intent open = new Intent(c, MainActivity.class).putExtra(MainActivity.EXTRA_INSTALL_UPDATE, true)
                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
         PendingIntent pi = PendingIntent.getActivity(c, 1, open, PendingIntent.FLAG_UPDATE_CURRENT);
         Notification n = new Notification.Builder(c, "updates")
                 .setSmallIcon(KeyMonitorService.ICON)
-                .setContentTitle("Task Manager " + r.tag + Lang.tr(" pronto", " ready"))
-                .setContentText(Lang.tr("Tocca per installare l'aggiornamento", "Tap to install the update"))
+                .setContentTitle("Task Manager " + r.tag + Lang.tr(" pronto", " ready",
+                " listo", " pronto", " prêt", " bereit"))
+                .setContentText(Lang.tr("Tocca per installare l'aggiornamento", "Tap to install the update",
+                "Toca para instalar la actualización", "Toque para instalar a atualização", "Touchez pour installer la mise à jour", "Tippe, um das Update zu installieren"))
                 .setContentIntent(pi)
                 .setAutoCancel(true)
                 .build();

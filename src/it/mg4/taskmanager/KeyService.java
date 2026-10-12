@@ -37,9 +37,11 @@ public class KeyService extends AccessibilityService {
     private static final String[] FORCE = {
             "forza interruzione", "forza arresto", "arresto forzato", "termina forzatamente", "forza chiusura",
             "force stop", "forcer l'arrêt", "forcer l’arrêt", "beenden erzwingen", "stopp erzwingen",
-            "forzar detención", "forzar cierre", "forçar parada", "强行停止", "強制停止",
+            "forzar detención", "forzar la detención", "forzar cierre", "forçar parada", "forçar paragem",
+            "forçar interrupção", "stoppen erzwingen", "anhalten erzwingen", "强行停止", "強制停止",
     };
-    private static final String[] CONFIRM = {"ok", "sì", "si", "conferma", "yes", "确定"};
+    private static final String[] CONFIRM = {"ok", "sì", "si", "sí", "sim", "oui", "ja", "conferma", "yes",
+            "aceptar", "confirmar", "confirmer", "bestätigen", "确定"};
     private static final String[] FORCE_IDS = {
             "com.android.settings:id/force_stop_button", "com.android.settings:id/right_button",
             "com.android.car.settings:id/force_stop_button",

@@ -2,13 +2,13 @@ package it.mg4.taskmanager;
 
 import android.app.ActivityManager;
 import android.content.Context;
-import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageManager;
 import android.os.Debug;
 
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -27,92 +27,101 @@ public final class SysPriv {
         return c.checkSelfPermission("android.permission.FORCE_STOP_PACKAGES") == PackageManager.PERMISSION_GRANTED;
     }
 
-    /** Elenco reale dei processi in esecuzione (REAL_GET_TASKS fa vedere tutte le app, non solo la nostra). */
+    /**
+     * Elenco reale dei processi in esecuzione (REAL_GET_TASKS fa vedere tutte le app, non solo la nostra).
+     * Veloce: la RAM non viene letta qui ma dopo, con fillMemory(), solo per le app mostrate.
+     */
     public static List<Tasks.Entry> list(Context ctx, boolean includeBackground) {
         PackageManager pm = ctx.getPackageManager();
         ActivityManager am = (ActivityManager) ctx.getSystemService(Context.ACTIVITY_SERVICE);
+        List<ActivityManager.RunningAppProcessInfo> procs = am.getRunningAppProcesses();
+        if (procs == null) return new ArrayList<Tasks.Entry>();
         Set<String> launchable = Tasks.launchablePackages(pm);
         Set<String> exclude = Tasks.excludedPackages(ctx, pm);
         Set<String> prot = Adb.protectedApps(ctx);
-        String fg = foregroundPackage(am);
+        String fg = foregroundPackage(procs);
 
-        Map<String, Tasks.Entry> byPkg = new HashMap<String, Tasks.Entry>();
-        List<ActivityManager.RunningAppProcessInfo> procs = am.getRunningAppProcesses();
-        if (procs == null) return new ArrayList<Tasks.Entry>();
-        java.util.Map<Integer, Long> mem = memoryBatch(am, procs);
+        Map<String, Tasks.Entry> byPkg = new LinkedHashMap<String, Tasks.Entry>();
+        Map<String, List<Integer>> pids = new HashMap<String, List<Integer>>();
         for (ActivityManager.RunningAppProcessInfo p : procs) {
             if (p.pkgList == null) continue;
-            Long rssVal = mem.get(p.pid);
-            long rssKb = rssVal == null ? 0 : rssVal;
             for (String pkg : p.pkgList) {
                 if (exclude.contains(pkg)) continue;
                 boolean canLaunch = launchable.contains(pkg);
                 if (!canLaunch && !includeBackground) continue;
-                ApplicationInfo ai;
-                try {
-                    ai = pm.getApplicationInfo(pkg, 0);
-                } catch (PackageManager.NameNotFoundException e) {
-                    continue;
-                }
-                if (ai.uid < 10000 && !canLaunch) continue;
                 Tasks.Entry en = byPkg.get(pkg);
                 if (en == null) {
-                    en = new Tasks.Entry();
-                    en.pkg = pkg;
-                    Tasks.fillMeta(pm, pkg, ai, en);
-                    en.launchable = canLaunch;
-                    en.system = (ai.flags & ApplicationInfo.FLAG_SYSTEM) != 0;
-                    en.isProtected = prot.contains(pkg);
-                    en.foreground = pkg.equals(fg);
-                    en.rssKb = 0;
+                    Tasks.Meta m = Tasks.meta(pm, pkg);
+                    if (m == null || (m.uid < 10000 && !canLaunch)) continue;
+                    en = Tasks.entry(pkg, m, canLaunch, prot, fg);
                     byPkg.put(pkg, en);
+                    pids.put(pkg, new ArrayList<Integer>());
                 }
-                en.rssKb += rssKb;
                 en.processes++;
+                pids.get(pkg).add(p.pid);
             }
+        }
+        for (Tasks.Entry en : byPkg.values()) {
+            List<Integer> l = pids.get(en.pkg);
+            en.pids = new int[l.size()];
+            for (int i = 0; i < l.size(); i++) en.pids[i] = l.get(i);
         }
         return new ArrayList<Tasks.Entry>(byPkg.values());
     }
 
-    /** Una sola chiamata binder per tutti i processi, invece di una per pid. */
-    private static java.util.Map<Integer, Long> memoryBatch(ActivityManager am, List<ActivityManager.RunningAppProcessInfo> procs) {
-        java.util.Map<Integer, Long> out = new HashMap<Integer, Long>();
-        int[] pids = new int[procs.size()];
-        for (int i = 0; i < procs.size(); i++) pids[i] = procs.get(i).pid;
+    /** RAM (PSS) dei processi delle voci indicate, con una sola chiamata binder. */
+    static void fillMemory(Context ctx, List<Tasks.Entry> entries) {
+        int n = 0;
+        for (Tasks.Entry e : entries) if (e.pids != null) n += e.pids.length;
+        if (n == 0) return;
+        int[] all = new int[n];
+        int k = 0;
+        for (Tasks.Entry e : entries) if (e.pids != null) for (int pid : e.pids) all[k++] = pid;
+        Map<Integer, Long> mem = new HashMap<Integer, Long>();
         try {
-            Debug.MemoryInfo[] mi = am.getProcessMemoryInfo(pids);
-            if (mi != null) for (int i = 0; i < mi.length && i < pids.length; i++) {
-                out.put(pids[i], (long) mi[i].getTotalPss());
+            ActivityManager am = (ActivityManager) ctx.getSystemService(Context.ACTIVITY_SERVICE);
+            Debug.MemoryInfo[] mi = am.getProcessMemoryInfo(all);
+            if (mi != null) for (int i = 0; i < mi.length && i < all.length; i++) {
+                mem.put(all[i], (long) mi[i].getTotalPss());
             }
         } catch (Exception ignored) {
+            return;
         }
-        return out;
+        for (Tasks.Entry e : entries) {
+            if (e.pids == null) continue;
+            long kb = 0;
+            for (int pid : e.pids) {
+                Long v = mem.get(pid);
+                if (v != null) kb += v;
+            }
+            e.rssKb = kb;
+        }
     }
 
-    private static String foregroundPackage(ActivityManager am) {
+    private static String foregroundPackage(List<ActivityManager.RunningAppProcessInfo> procs) {
         if (KeyService.lastForeground != null) return KeyService.lastForeground;
-        try {
-            List<ActivityManager.RunningAppProcessInfo> l = am.getRunningAppProcesses();
-            if (l != null) for (ActivityManager.RunningAppProcessInfo p : l) {
-                if (p.importance == ActivityManager.RunningAppProcessInfo.IMPORTANCE_FOREGROUND
-                        && p.pkgList != null && p.pkgList.length > 0) {
-                    return p.pkgList[0];
-                }
+        for (ActivityManager.RunningAppProcessInfo p : procs) {
+            if (p.importance == ActivityManager.RunningAppProcessInfo.IMPORTANCE_FOREGROUND
+                    && p.pkgList != null && p.pkgList.length > 0) {
+                return p.pkgList[0];
             }
-        } catch (Exception ignored) {
         }
         return null;
     }
 
     /** Chiusura istantanea con ActivityManager.forceStopPackage (richiede FORCE_STOP_PACKAGES). */
+    private static Method forceStopMethod;
+
     public static boolean forceStop(Context ctx, List<String> pkgs) {
         ActivityManager am = (ActivityManager) ctx.getSystemService(Context.ACTIVITY_SERVICE);
         boolean all = true;
-        Method m = null;
-        try {
-            m = ActivityManager.class.getMethod("forceStopPackage", String.class);
-        } catch (NoSuchMethodException e) {
-            return false;
+        Method m = forceStopMethod;
+        if (m == null) {
+            try {
+                m = forceStopMethod = ActivityManager.class.getMethod("forceStopPackage", String.class);
+            } catch (NoSuchMethodException e) {
+                return false;
+            }
         }
         for (String p : pkgs) {
             try {

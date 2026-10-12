@@ -20,9 +20,9 @@ jobs:
     env:
       TAG: ${{ github.event.release.tag_name || github.event.inputs.tag || github.ref_name }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
-      - uses: actions/setup-java@v4
+      - uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: "17"
@@ -60,13 +60,21 @@ jobs:
           export VERSION_NAME="$TAG"
           sh build.sh
 
+      - name: Verifica APK
+        if: steps.key.outputs.ok == 'true'
+        run: BUILD_TOOLS="$ANDROID_HOME/build-tools/34.0.0" sh verify.sh "$TAG"
+
       - name: Pubblica Release
         if: steps.key.outputs.ok == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          NOTES=RELEASE_NOTES.md
-          [ -f "$NOTES" ] || { echo "Aggiornamento $TAG" > /tmp/notes.md; NOTES=/tmp/notes.md; }
           APKS="MG4-TaskManager.apk"
           [ -f MG4-TaskManager-system.apk ] && APKS="$APKS MG4-TaskManager-system.apk"
           gh release upload "$TAG" $APKS --clobber
+          # Se la Release è stata pubblicata senza descrizione, usa RELEASE_NOTES.md
+          # (le note multilingua: l'app mostra la sezione nella lingua dell'utente).
+          BODY=$(gh api "repos/$GITHUB_REPOSITORY/releases/tags/$TAG" --jq '.body // ""')
+          if [ -z "$(echo "$BODY" | tr -d '[:space:]')" ] && [ -f RELEASE_NOTES.md ]; then
+            gh release edit "$TAG" --notes-file RELEASE_NOTES.md
+          fi

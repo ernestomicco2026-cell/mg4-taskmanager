@@ -1,0 +1,64 @@
+# Build di controllo: a ogni push compila le due edizioni, le verifica con aapt2/apksigner
+# e le allega all'esecuzione (scheda Actions → esecuzione → Artifacts) per provarle prima della Release.
+name: Build
+
+on:
+  push:
+    branches: ["**"]
+    paths-ignore: ["**.md"]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Android SDK (API 28 + build-tools)
+        run: |
+          yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "platforms;android-28" "build-tools;34.0.0" > /dev/null
+
+      - name: Pillow (icona)
+        run: pip install --quiet pillow
+
+      - name: Chiave di firma
+        env:
+          KEYSTORE_B64: ${{ secrets.KEYSTORE_B64 }}
+        run: |
+          if [ -n "$KEYSTORE_B64" ]; then
+            echo "$KEYSTORE_B64" | base64 -d > release.keystore
+          else
+            # senza secret (es. fork): chiave temporanea, solo per verificare che compili
+            keytool -genkeypair -keystore release.keystore -storepass taskmanager -keypass taskmanager \
+                    -alias tm -keyalg RSA -keysize 2048 -validity 1 -dname "CN=CI" -noprompt
+          fi
+
+      - name: Compila APK
+        env:
+          KEYSTORE_PASS: ${{ secrets.KEYSTORE_PASS }}
+        run: |
+          export ANDROID_JAR="$ANDROID_HOME/platforms/android-28/android.jar"
+          export D8="$ANDROID_HOME/build-tools/34.0.0/d8"
+          export KEYSTORE=release.keystore
+          export KEYSTORE_PASS="${KEYSTORE_PASS:-taskmanager}"
+          sh build.sh
+
+      - name: Verifica APK
+        run: BUILD_TOOLS="$ANDROID_HOME/build-tools/34.0.0" sh verify.sh "v$(cat VERSION)"
+
+      - uses: actions/upload-artifact@v5
+        with:
+          name: MG4-TaskManager-${{ github.sha }}
+          path: |
+            MG4-TaskManager.apk
+            MG4-TaskManager-system.apk
+            build/badging.txt
+            build/resources.txt
+            build/manifest.txt
+          retention-days: 14

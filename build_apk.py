@@ -26,6 +26,8 @@ T_REF, T_STRING, T_INT_DEC, T_INT_HEX, T_BOOL = 0x01, 0x03, 0x10, 0x11, 0x12
 
 ID_DRAWABLE_IC = 0x7F010000
 ID_XML_KEYS = 0x7F020000
+ID_STR_A11Y_LABEL = 0x7F030000
+ID_STR_A11Y_DESC = 0x7F030001
 THEME_DEVICE_DEFAULT_NO_ACTION_BAR = 0x01030129
 
 
@@ -44,6 +46,12 @@ class E:
 
 # ------------------------------------------------------------------ string pool
 
+def utf8_len(n):
+    """Lunghezza in formato ResStringPool UTF-8: 1 byte fino a 127, altrimenti 2 byte con bit alto."""
+    assert n < 0x8000
+    return bytes([n]) if n < 0x80 else bytes([0x80 | (n >> 8), n & 0xFF])
+
+
 def string_pool(strings, utf8):
     count = len(strings)
     data = b""
@@ -52,8 +60,7 @@ def string_pool(strings, utf8):
         offsets.append(len(data))
         if utf8:
             b = s.encode("utf-8")
-            assert len(s) < 128 and len(b) < 128
-            data += bytes([len(s), len(b)]) + b + b"\x00"
+            data += utf8_len(len(s)) + utf8_len(len(b)) + b + b"\x00"
         else:
             u = s.encode("utf-16-le")
             assert len(s) < 0x8000
@@ -150,33 +157,53 @@ def axml(root):
 
 # ------------------------------------------------------------------ resources.arsc
 
-def arsc(entries):
-    """entries: lista di (type_name, key, file_path) -> type id 1.. in ordine, entry 0.."""
-    types = []
-    for t, k, f in entries:
-        if t not in types:
-            types.append(t)
-    keys = [k for _, k, _ in entries]
-    values = [f for _, _, f in entries]
+def res_config(lang=None):
+    """ResTable_config di 64 byte: solo la lingua (es. "it"), oppure tutto zero = default."""
+    c = bytearray(64)
+    struct.pack_into("<I", c, 0, 64)
+    if lang:
+        c[8:10] = lang.encode("ascii")  # imsi (4 byte) poi locale: language[2], country[2]
+    return bytes(c)
+
+
+def arsc(types):
+    """types: lista di (type_name, keys, [(lang|None, {key: valore stringa})]).
+    I tipi prendono gli id 1.. nell'ordine dato, le voci 0.. nell'ordine di keys.
+    Ogni configurazione deve definire tutte le chiavi; le stringhe variano per lingua."""
+    values = []
+    for _, _, configs in types:
+        for _, vals in configs:
+            for v in vals.values():
+                if v not in values:
+                    values.append(v)
+    keys = []
+    for _, ks, _ in types:
+        for k in ks:
+            if k not in keys:
+                keys.append(k)
     gpool = string_pool(values, utf8=True)
-    tpool = string_pool(types, utf8=True)
+    tpool = string_pool([t for t, _, _ in types], utf8=True)
     kpool = string_pool(keys, utf8=True)
 
     chunks = b""
-    for ti, t in enumerate(types):
-        ents = [(keys.index(k), values.index(f)) for tt, k, f in entries if tt == t]
-        n = len(ents)
-        chunks += struct.pack("<HHIBBHI", 0x0202, 16, 16 + 4 * n, ti + 1, 0, 0, n) + b"\x00" * (4 * n)
-        config = struct.pack("<I", 64) + b"\x00" * 60
-        header_size = 20 + len(config)
-        entries_start = header_size + 4 * n
-        offs, data = b"", b""
-        for key_i, val_i in ents:
-            offs += struct.pack("<I", len(data))
-            data += struct.pack("<HHI", 8, 0, key_i) + struct.pack("<HBBI", 8, 0, T_STRING, val_i)
-        size = entries_start + len(data)
-        chunks += struct.pack("<HHIBBHII", 0x0201, header_size, size, ti + 1, 0, 0, n, entries_start) + config
-        chunks += offs + data
+    for ti, (t, ks, configs) in enumerate(types):
+        n = len(ks)
+        localized = len(configs) > 1
+        spec_flags = 0x0004 if localized else 0  # ACONFIGURATION_LOCALE: la voce cambia con la lingua
+        chunks += struct.pack("<HHIBBHI", 0x0202, 16, 16 + 4 * n, ti + 1, 0, 0, n)
+        chunks += b"".join(struct.pack("<I", spec_flags) for _ in ks)
+        for lang, vals in configs:
+            assert set(vals) == set(ks), (t, lang)
+            config = res_config(lang)
+            header_size = 20 + len(config)
+            entries_start = header_size + 4 * n
+            offs, data = b"", b""
+            for k in ks:
+                offs += struct.pack("<I", len(data))
+                data += struct.pack("<HHI", 8, 0, keys.index(k)) + struct.pack("<HBBI", 8, 0, T_STRING, values.index(vals[k]))
+            size = entries_start + len(data)
+            chunks += struct.pack("<HHIBBHII", 0x0201, header_size, size, ti + 1, 0, 0, n, entries_start) + config
+            chunks += offs + data
 
     name = PKG.encode("utf-16-le").ljust(256, b"\x00")
     pkg_header_size = 288
@@ -190,6 +217,24 @@ def arsc(entries):
 
     table_body = gpool + pkg
     return struct.pack("<HHII", 0x0002, 12, 12 + len(table_body), 1) + table_body
+
+
+# Testi del servizio di accessibilità (si vedono in Impostazioni → Accessibilità dell'auto).
+# Default (nessuna lingua) = inglese; le altre lingue seguono la lingua di sistema.
+A11Y_STRINGS = {
+    None: ("Task Manager - steering-wheel button",
+           "Lets Task Manager see open apps, close them by tapping «Force stop» and open with a steering-wheel button. It doesn't read or send your data."),
+    "it": ("Task Manager - tasto al volante",
+           "Permette al Task Manager di vedere le app aperte, chiuderle premendo «Forza interruzione» e aprirsi con un tasto del volante. Non legge né invia i tuoi dati."),
+    "es": ("Task Manager - botón del volante",
+           "Permite a Task Manager ver las apps abiertas, cerrarlas pulsando «Forzar detención» y abrirse con un botón del volante. No lee ni envía tus datos."),
+    "pt": ("Task Manager - botão do volante",
+           "Permite que o Task Manager veja os apps abertos, feche-os tocando em «Forçar parada» e abra com um botão do volante. Não lê nem envia os seus dados."),
+    "fr": ("Task Manager - bouton au volant",
+           "Permet à Task Manager de voir les apps ouvertes, de les fermer en appuyant sur « Forcer l'arrêt » et de s'ouvrir avec un bouton au volant. Ne lit ni n'envoie vos données."),
+    "de": ("Task Manager - Lenkradtaste",
+           "Ermöglicht Task Manager, geöffnete Apps zu sehen, sie über „Beenden erzwingen“ zu schließen und sich mit einer Lenkradtaste zu öffnen. Liest oder sendet keine Daten."),
+}
 
 
 # ------------------------------------------------------------------ icona
@@ -258,7 +303,7 @@ def main(build):
                 ]),
             ]),
             E("service", [("android:name", PKG + ".KeyService"),
-                          ("android:label", "Task Manager - tasto al volante"),
+                          ("android:label", Ref(ID_STR_A11Y_LABEL)),
                           ("android:permission", "android.permission.BIND_ACCESSIBILITY_SERVICE"),
                           ("android:exported", True)], [
                 E("intent-filter", [], [
@@ -282,7 +327,7 @@ def main(build):
     ])
 
     a11y = E("accessibility-service", [
-        ("android:description", "Permette al Task Manager di vedere le app aperte, chiuderle premendo «Forza interruzione» e aprirsi con un tasto del volante. Non legge né invia i tuoi dati."),
+        ("android:description", Ref(ID_STR_A11Y_DESC)),
         ("android:accessibilityEventTypes", Hex(0x20)),       # typeWindowStateChanged
         ("android:accessibilityFeedbackType", Hex(0x10)),     # feedbackGeneric
         ("android:notificationTimeout", 100),
@@ -294,8 +339,12 @@ def main(build):
     files = {
         "AndroidManifest.xml": axml(manifest),
         "res/xml/tm_keys.xml": axml(a11y),
-        "resources.arsc": arsc([("drawable", "ic", "res/drawable/ic.png"),
-                                ("xml", "tm_keys", "res/xml/tm_keys.xml")]),
+        "resources.arsc": arsc([
+            ("drawable", ["ic"], [(None, {"ic": "res/drawable/ic.png"})]),
+            ("xml", ["tm_keys"], [(None, {"tm_keys": "res/xml/tm_keys.xml"})]),
+            ("string", ["a11y_label", "a11y_desc"],
+             [(lang, {"a11y_label": lab, "a11y_desc": desc}) for lang, (lab, desc) in A11Y_STRINGS.items()]),
+        ]),
     }
     icon_path = os.path.join(build, "ic.png")
     icon(icon_path)

@@ -10,6 +10,7 @@ import android.widget.Toast;
 public class InstallReceiver extends BroadcastReceiver {
     @Override
     public void onReceive(Context c, Intent intent) {
+        Lang.init(c);
         int status = intent.getIntExtra(PackageInstaller.EXTRA_STATUS, PackageInstaller.STATUS_FAILURE);
         if (status == PackageInstaller.STATUS_PENDING_USER_ACTION) {
             Intent confirm = intent.getParcelableExtra(Intent.EXTRA_INTENT);
@@ -18,12 +19,14 @@ public class InstallReceiver extends BroadcastReceiver {
                 try {
                     c.startActivity(confirm);
                 } catch (Exception e) {
-                    Toast.makeText(c, "Impossibile aprire l'installer di Android", Toast.LENGTH_LONG).show();
+                    Toast.makeText(c, Lang.tr("Impossibile aprire l'installer di Android", "Couldn't open the Android installer",
+                "No se puede abrir el instalador de Android", "Não foi possível abrir o instalador do Android", "Impossible d'ouvrir le programme d'installation Android", "Android-Installer konnte nicht geöffnet werden"), Toast.LENGTH_LONG).show();
                 }
             }
         } else if (status != PackageInstaller.STATUS_SUCCESS) {
             String msg = intent.getStringExtra(PackageInstaller.EXTRA_STATUS_MESSAGE);
-            Toast.makeText(c, "Aggiornamento non installato" + (msg != null ? ": " + msg : ""), Toast.LENGTH_LONG).show();
+            Toast.makeText(c, Lang.tr("Aggiornamento non installato", "Update not installed",
+                "Actualización no instalada", "Atualização não instalada", "Mise à jour non installée", "Update nicht installiert") + (msg != null ? ": " + msg : ""), Toast.LENGTH_LONG).show();
         }
     }
 }

@@ -41,13 +41,16 @@ public class KeyMonitorService extends Service {
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
+        Lang.init(this);
         NotificationManager nm = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
-        nm.createNotificationChannel(new NotificationChannel("keys", Lang.tr("Tasto al volante", "Steering-wheel button"), NotificationManager.IMPORTANCE_MIN));
+        nm.createNotificationChannel(new NotificationChannel("keys", Lang.tr("Tasto al volante", "Steering-wheel button",
+                "Botón del volante", "Botão do volante", "Bouton au volant", "Lenkradtaste"), NotificationManager.IMPORTANCE_MIN));
         PendingIntent pi = PendingIntent.getActivity(this, 0, new Intent(this, MainActivity.class), 0);
         Notification n = new Notification.Builder(this, "keys")
                 .setSmallIcon(ICON)
                 .setContentTitle("Task Manager")
-                .setContentText(Lang.tr("In ascolto del tasto al volante", "Listening for the steering-wheel button"))
+                .setContentText(Lang.tr("In ascolto del tasto al volante", "Listening for the steering-wheel button",
+                "Esperando el botón del volante", "Aguardando o botão do volante", "À l'écoute du bouton au volant", "Warte auf die Lenkradtaste"))
                 .setContentIntent(pi)
                 .setOngoing(true)
                 .build();

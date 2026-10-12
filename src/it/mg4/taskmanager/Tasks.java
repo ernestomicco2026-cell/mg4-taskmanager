@@ -42,6 +42,7 @@ public final class Tasks {
         public boolean system;
         public boolean isProtected;
         public boolean foreground;
+        int[] pids; // modalità sistema: processi di cui leggere la RAM nel secondo passaggio
     }
 
     public static final class Result {
@@ -49,6 +50,7 @@ public final class Tasks {
         public List<Entry> entries;
         public int mode = BASE;
         public boolean adb; // true se chiusura istantanea disponibile (sistema o ADB)
+        public boolean memoryPending; // RAM da leggere con fillMemory() (modalità sistema)
         public String adbError;
     }
 
@@ -73,29 +75,80 @@ public final class Tasks {
     private Tasks() {
     }
 
-    /** Cache di etichetta e icona per pacchetto: loadIcon è lento, lo facciamo una volta sola. */
-    private static final Map<String, Object[]> META = new HashMap<String, Object[]>();
+    // ================================================================== cache
 
-    static void fillMeta(PackageManager pm, String pkg, ApplicationInfo ai, Entry en) {
-        Object[] m;
-        synchronized (META) {
-            m = META.get(pkg);
-        }
-        if (m == null) {
-            CharSequence label = ai.loadLabel(pm);
-            Drawable icon = null;
-            try {
-                icon = ai.loadIcon(pm);
-            } catch (Exception ignored) {
-            }
-            m = new Object[]{label, icon};
-            synchronized (META) {
-                META.put(pkg, m);
-            }
-        }
-        en.label = (CharSequence) m[0];
-        en.icon = (Drawable) m[1];
+    /** Dati di un pacchetto che non cambiano tra un aggiornamento e l'altro della lista. */
+    static final class Meta {
+        CharSequence label;
+        Drawable icon;
+        boolean system;
+        int uid;
     }
+
+    /** Etichetta, icona e flag per pacchetto: loadIcon e getApplicationInfo sono lenti, li facciamo una volta sola. */
+    private static final Map<String, Meta> META = new HashMap<String, Meta>();
+    /** Nomi di processo che non sono app installate (processi nativi): non li richiediamo di nuovo. */
+    private static final Set<String> NOT_APPS = new HashSet<String>();
+
+    /** null se il pacchetto non è installato. */
+    static Meta meta(PackageManager pm, String pkg) {
+        synchronized (META) {
+            Meta m = META.get(pkg);
+            if (m != null || NOT_APPS.contains(pkg)) return m;
+        }
+        ApplicationInfo ai;
+        try {
+            ai = pm.getApplicationInfo(pkg, 0);
+        } catch (PackageManager.NameNotFoundException e) {
+            synchronized (META) {
+                NOT_APPS.add(pkg);
+            }
+            return null;
+        }
+        Meta m = new Meta();
+        m.label = ai.loadLabel(pm);
+        try {
+            m.icon = ai.loadIcon(pm);
+        } catch (Exception ignored) {
+        }
+        m.system = (ai.flags & ApplicationInfo.FLAG_SYSTEM) != 0;
+        m.uid = ai.uid;
+        synchronized (META) {
+            META.put(pkg, m);
+        }
+        return m;
+    }
+
+    private static final long PKG_TTL_MS = 60 * 1000;
+    private static Set<String> launchableCache;
+    private static String homeCache;
+    private static long pkgCacheAt;
+
+    /** Elenco delle app con icona nel launcher, ricalcolato al massimo una volta al minuto. */
+    static synchronized Set<String> launchablePackages(PackageManager pm) {
+        long now = SystemClock.elapsedRealtime();
+        if (launchableCache == null || now - pkgCacheAt > PKG_TTL_MS) {
+            Set<String> fresh = queryLaunchable(pm);
+            if (launchableCache != null && !fresh.equals(launchableCache)) {
+                synchronized (META) { // app installate o rimosse: rileggi tutto
+                    META.clear();
+                    NOT_APPS.clear();
+                }
+            }
+            launchableCache = fresh;
+            homeCache = queryHome(pm);
+            pkgCacheAt = now;
+        }
+        return launchableCache;
+    }
+
+    /** Svuota le cache dei pacchetti (es. dopo aver installato o rimosso app). */
+    static synchronized void invalidatePackages() {
+        pkgCacheAt = 0;
+    }
+
+    /** Ultima RAM letta per pacchetto: la mostriamo subito, poi la aggiorniamo. */
+    private static final Map<String, Long> LAST_RSS = new HashMap<String, Long>();
 
     // ================================================================== elenco
 
@@ -105,6 +158,13 @@ public final class Tasks {
             res.entries = SysPriv.list(ctx, includeBackground);
             res.mode = Result.SYSTEM;
             res.adb = true;
+            res.memoryPending = !res.entries.isEmpty();
+            synchronized (LAST_RSS) {
+                for (Entry e : res.entries) {
+                    Long v = LAST_RSS.get(e.pkg);
+                    if (v != null) e.rssKb = v;
+                }
+            }
             sort(res.entries);
             return res;
         }
@@ -122,6 +182,17 @@ public final class Tasks {
         return res;
     }
 
+    /**
+     * Secondo passaggio della modalità sistema: legge la RAM (lenta) solo dei processi mostrati.
+     * Aggiorna le voci in place.
+     */
+    public static void fillMemory(Context ctx, List<Entry> entries) {
+        SysPriv.fillMemory(ctx, entries);
+        synchronized (LAST_RSS) {
+            for (Entry e : entries) if (e.rssKb >= 0) LAST_RSS.put(e.pkg, e.rssKb);
+        }
+    }
+
     static Set<String> excludedPackages(Context ctx, PackageManager pm) {
         return excluded(ctx, pm);
     }
@@ -134,14 +205,15 @@ public final class Tasks {
         return exclude;
     }
 
-    private static Entry entry(Context ctx, PackageManager pm, String pkg, ApplicationInfo ai, boolean launchable) {
+    static Entry entry(String pkg, Meta m, boolean launchable, Set<String> prot, String fg) {
         Entry en = new Entry();
         en.pkg = pkg;
-        fillMeta(pm, pkg, ai, en);
+        en.label = m.label;
+        en.icon = m.icon;
         en.launchable = launchable;
-        en.system = (ai.flags & ApplicationInfo.FLAG_SYSTEM) != 0;
-        en.isProtected = Adb.protectedApps(ctx).contains(pkg);
-        en.foreground = pkg.equals(KeyService.lastForeground);
+        en.system = m.system;
+        en.isProtected = prot.contains(pkg);
+        en.foreground = pkg.equals(fg);
         return en;
     }
 
@@ -151,20 +223,18 @@ public final class Tasks {
         PackageManager pm = ctx.getPackageManager();
         Set<String> launchable = launchablePackages(pm);
         Set<String> exclude = excluded(ctx, pm);
+        Set<String> prot = Adb.protectedApps(ctx);
+        String fg = KeyService.lastForeground;
         List<Entry> res = new ArrayList<Entry>();
         for (Map.Entry<String, long[]> e : byPkg.entrySet()) {
             String pkg = e.getKey();
             if (exclude.contains(pkg)) continue;
-            ApplicationInfo ai;
-            try {
-                ai = pm.getApplicationInfo(pkg, 0);
-            } catch (PackageManager.NameNotFoundException ex) {
-                continue; // processo nativo, non un'app
-            }
             boolean canLaunch = launchable.contains(pkg);
-            if (!canLaunch && !includeBackground) continue;
-            if (ai.uid < 10000 && !canLaunch) continue;
-            Entry en = entry(ctx, pm, pkg, ai, canLaunch);
+            if (!canLaunch && !includeBackground) continue; // prima del PackageManager: evita chiamate inutili
+            Meta m = meta(pm, pkg);
+            if (m == null) continue; // processo nativo, non un'app
+            if (m.uid < 10000 && !canLaunch) continue;
+            Entry en = entry(pkg, m, canLaunch, prot, fg);
             en.rssKb = e.getValue()[0];
             en.processes = (int) e.getValue()[1];
             res.add(en);
@@ -194,6 +264,8 @@ public final class Tasks {
 
         // Le app attive con un processo nostro "vicino" non sono visibili senza ADB: mostriamo quelle usate.
         Set<String> alive = runningFromActivityManager(ctx);
+        Set<String> prot = Adb.protectedApps(ctx);
+        String fg = KeyService.lastForeground;
         List<Entry> res = new ArrayList<Entry>();
         for (Map.Entry<String, Long> e : seen.entrySet()) {
             String pkg = e.getKey();
@@ -203,10 +275,8 @@ public final class Tasks {
                 k = killedAt.get(pkg);
             }
             if (k != null && k >= e.getValue() && !alive.contains(pkg)) continue;
-            try {
-                res.add(entry(ctx, pm, pkg, pm.getApplicationInfo(pkg, 0), true));
-            } catch (PackageManager.NameNotFoundException ignored) {
-            }
+            Meta m = meta(pm, pkg);
+            if (m != null) res.add(entry(pkg, m, true, prot, fg));
         }
         return res;
     }
@@ -279,7 +349,7 @@ public final class Tasks {
         return map;
     }
 
-    static Set<String> launchablePackages(PackageManager pm) {
+    private static Set<String> queryLaunchable(PackageManager pm) {
         Set<String> s = new HashSet<String>();
         Intent i = new Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER);
         for (ResolveInfo ri : pm.queryIntentActivities(i, 0)) s.add(ri.activityInfo.packageName);
@@ -287,6 +357,13 @@ public final class Tasks {
     }
 
     static String homePackage(PackageManager pm) {
+        launchablePackages(pm); // aggiorna la cache se scaduta
+        synchronized (Tasks.class) {
+            return homeCache;
+        }
+    }
+
+    private static String queryHome(PackageManager pm) {
         Intent i = new Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME);
         ResolveInfo ri = pm.resolveActivity(i, PackageManager.MATCH_DEFAULT_ONLY);
         if (ri == null || ri.activityInfo == null) return null;
@@ -296,7 +373,6 @@ public final class Tasks {
 
     // ================================================================== chiusura
 
-    /** Prova la chiusura completa via ADB. False se ADB non è disponibile. */
     /** Chiusura istantanea: modalità sistema se disponibile, altrimenti ADB. False se nessuna delle due. */
     public static boolean killInstant(Context ctx, List<String> pkgs, AdbClient.AuthListener l) {
         if (pkgs.isEmpty()) return true;
