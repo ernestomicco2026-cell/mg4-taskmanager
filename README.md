@@ -2,7 +2,7 @@
 
 **Italiano** · [English](README.en.md)
 
-Task manager per l'infotainment della **MG4** (Android Automotive OS 9): mostra le app aperte con la RAM usata e permette di chiuderle davvero (`am force-stop`), una alla volta o tutte insieme. Si apre dall'icona nel launcher o con un **tasto al volante**.
+Task manager per l'infotainment della **MG4** (Android Automotive OS 9): mostra le app aperte con la RAM usata e permette di chiuderle davvero, una alla volta o tutte insieme. Si apre dall'icona nel launcher o con un **tasto al volante**.
 
 Non serve root: l'edizione di sistema usa i permessi della firma platform dell'auto, quella normale si collega all'**ADB dell'auto** in locale (`127.0.0.1:5555`) oppure usa l'accessibilità.
 
