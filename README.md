@@ -6,6 +6,12 @@ Task manager per l'infotainment della **MG4** (Android Automotive OS 9): mostra 
 
 Non serve root.
 
+## Video
+
+[![Guarda il video su YouTube](https://img.youtube.com/vi/fYtzuTELNVg/hqdefault.jpg)](https://youtu.be/fYtzuTELNVg)
+
+▶️ [Guarda il video su YouTube](https://youtu.be/fYtzuTELNVg)
+
 ## Funzioni
 
 - Lista delle app aperte, con l'app in primo piano evidenziata e la RAM usata
