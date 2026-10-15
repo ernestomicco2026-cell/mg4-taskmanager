@@ -6,6 +6,8 @@ Task manager per l'infotainment della **MG4** (Android Automotive OS 9): mostra 
 
 Non serve root.
 
+[![Offrimi un caffè con PayPal](https://img.shields.io/badge/Offrimi%20un%20caff%C3%A8-PayPal-0070BA?style=for-the-badge&logo=paypal&logoColor=white)](https://www.paypal.com/pool/9tv7fQ36nA?sr=wccr)
+
 ## Video
 
 [![Guarda il video su YouTube](https://img.youtube.com/vi/fYtzuTELNVg/hqdefault.jpg)](https://youtu.be/fYtzuTELNVg)
@@ -71,3 +73,11 @@ All'accensione dell'auto e poi ogni 6 ore (serve Internet) l'app controlla se c'
 In **Impostazioni → Aggiornamenti** si può disattivare il controllo, scegliere se installare da soli o controllare subito («Controlla ora»).
 
 > **Hai la 1.2 normale?** Installa la 1.2.1 a mano una volta, con la chiavetta. Dalla 1.2.1 in poi gli aggiornamenti sono automatici.
+
+## Sostieni il progetto
+
+MG4 Task Manager è e resterà **gratuito**. Se ti è utile e ti va di contribuire alle ore passate a svilupparlo e provarlo
+in auto, puoi lasciare una piccola offerta: è del tutto **facoltativa**, e anche una stella al repository o una
+segnalazione di un problema sono un aiuto prezioso. Grazie!
+
+[![Offrimi un caffè con PayPal](https://img.shields.io/badge/Offrimi%20un%20caff%C3%A8-PayPal-0070BA?style=for-the-badge&logo=paypal&logoColor=white)](https://www.paypal.com/pool/9tv7fQ36nA?sr=wccr)
