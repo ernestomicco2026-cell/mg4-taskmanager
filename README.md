@@ -18,6 +18,7 @@ Non serve root.
 
 - Lista delle app aperte, con l'app in primo piano evidenziata e la RAM usata
 - **Chiudi** la singola app o **Chiudi tutto**
+- **Disinstalla** le app che hai installato tu (mai quelle di sistema), vedi sotto
 - **Escludi e nascondi le app di sistema** (radio, navigatore, app dell'auto): attivo di default
 - **App escluse a scelta** da «Chiudi tutto» (es. DiPlay/CarPlay), dalle Impostazioni o tenendo premuta un'app
 - **Tasto al volante** configurabile ("Imposta tasto…" e premi il tasto); opzione «solo pressione lunga»
@@ -28,6 +29,13 @@ Non serve root.
 ## Lingue
 
 L'app usa la **lingua di sistema** dell'auto (italiano, English, español, português, français o deutsch; per le altre lingue l'inglese). Per sceglierne una diversa: **Impostazioni → Lingua**. Si può tornare in qualsiasi momento ad «Automatica».
+
+## Disinstallare un'app
+
+Sulle schede delle app installate da te c'è il pulsante **🗑**; in **Impostazioni → Disinstalla app** trovi invece l'elenco di tutte le app installate da te, anche quelle chiuse. Prima di rimuovere un'app il Task Manager chiede sempre conferma. Le app di sistema non compaiono e non si possono disinstallare.
+
+- **Edizione di sistema o con ADB:** l'app viene rimossa subito dopo la conferma.
+- **Edizione normale senza ADB:** si apre la schermata di Android, dove confermi con «OK».
 
 ## Quale edizione scaricare
 

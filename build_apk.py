@@ -288,9 +288,11 @@ def main(build):
         E("uses-permission", [("android:name", "android.permission.KILL_BACKGROUND_PROCESSES")]),
         E("uses-permission", [("android:name", "android.permission.PACKAGE_USAGE_STATS")]),
         E("uses-permission", [("android:name", "android.permission.REQUEST_INSTALL_PACKAGES")]),
+        E("uses-permission", [("android:name", "android.permission.REQUEST_DELETE_PACKAGES")]),
         # Concesse solo se l'APK è firmato con la chiave platform (edizione di sistema); altrimenti ignorate.
         E("uses-permission", [("android:name", "android.permission.FORCE_STOP_PACKAGES")]),
         E("uses-permission", [("android:name", "android.permission.REAL_GET_TASKS")]),
+        E("uses-permission", [("android:name", "android.permission.DELETE_PACKAGES")]),
         E("application", [("android:label", "Task Manager"), ("android:icon", Ref(ID_DRAWABLE_IC)),
                           ("android:theme", Ref(THEME_DEVICE_DEFAULT_NO_ACTION_BAR))], [
             E("activity", [("android:name", PKG + ".MainActivity"), ("android:label", "Task Manager"),
@@ -317,6 +319,7 @@ def main(build):
                           ("android:permission", "android.permission.BIND_JOB_SERVICE"),
                           ("android:exported", True)]),
             E("receiver", [("android:name", PKG + ".InstallReceiver"), ("android:exported", False)]),
+            E("receiver", [("android:name", PKG + ".UninstallReceiver"), ("android:exported", False)]),
             E("receiver", [("android:name", PKG + ".BootReceiver"), ("android:exported", True)], [
                 E("intent-filter", [], [
                     E("action", [("android:name", "android.intent.action.BOOT_COMPLETED")]),

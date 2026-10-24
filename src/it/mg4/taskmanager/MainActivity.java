@@ -375,6 +375,16 @@ public class MainActivity extends Activity {
         texts.addView(s);
         c.addView(texts, new LinearLayout.LayoutParams(0, -2, 1));
 
+        if (!e.system) { // solo app installate da te: quelle di sistema non si disinstallano
+            c.addView(button("🗑", BTN, new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    askUninstall(e.pkg, e.label);
+                }
+            }), lp(-2, -2, 0, 0));
+            View gap = new View(this);
+            c.addView(gap, new LinearLayout.LayoutParams(dp(10), 1));
+        }
         c.addView(button(tr("Chiudi", "Close",
                 "Cerrar", "Fechar", "Fermer", "Schließen"), DANGER, new View.OnClickListener() {
             @Override
@@ -630,6 +640,155 @@ public class MainActivity extends Activity {
         });
     }
 
+    // ================================================================== disinstallazione
+
+    private static final int REQ_UNINSTALL = 7;
+    private String uninstallPkg;
+    private CharSequence uninstallLabel;
+
+    /** Elenco di tutte le app installate da te (anche chiuse): tocca per disinstallarla. */
+    private void chooseUninstall() {
+        final android.content.pm.PackageManager pm = getPackageManager();
+        final List<android.content.pm.ApplicationInfo> apps = Uninstall.userApps(this);
+        if (apps.isEmpty()) {
+            toast(tr("Nessuna app installata da te", "No apps installed by you",
+                    "Ninguna app instalada por ti", "Nenhum app instalado por você",
+                    "Aucune app installée par vous", "Keine selbst installierten Apps"));
+            return;
+        }
+        final java.util.Map<String, CharSequence> labels = new HashMap<String, CharSequence>();
+        for (android.content.pm.ApplicationInfo ai : apps) labels.put(ai.packageName, ai.loadLabel(pm));
+        java.util.Collections.sort(apps, new java.util.Comparator<android.content.pm.ApplicationInfo>() {
+            @Override
+            public int compare(android.content.pm.ApplicationInfo a, android.content.pm.ApplicationInfo b) {
+                return labels.get(a.packageName).toString().compareToIgnoreCase(labels.get(b.packageName).toString());
+            }
+        });
+        CharSequence[] items = new CharSequence[apps.size()];
+        for (int i = 0; i < apps.size(); i++) items[i] = labels.get(apps.get(i).packageName);
+        new AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert)
+                .setTitle(tr("Disinstalla un'app", "Uninstall an app",
+                        "Desinstalar una app", "Desinstalar um app", "Désinstaller une app", "Eine App deinstallieren"))
+                .setItems(items, new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface d, int which) {
+                        String pkg = apps.get(which).packageName;
+                        askUninstall(pkg, labels.get(pkg));
+                    }
+                })
+                .setNegativeButton(tr("Annulla", "Cancel",
+                        "Cancelar", "Cancelar", "Annuler", "Abbrechen"), null)
+                .show();
+    }
+
+    private void askUninstall(final String pkg, final CharSequence label) {
+        if (!Uninstall.allowed(this, pkg)) {
+            toast(tr("Le app di sistema non si possono disinstallare", "System apps can't be uninstalled",
+                    "Las apps del sistema no se pueden desinstalar", "Os apps do sistema não podem ser desinstalados",
+                    "Les apps système ne peuvent pas être désinstallées", "System-Apps können nicht deinstalliert werden"));
+            return;
+        }
+        new AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert)
+                .setTitle(String.format(tr("Disinstallare «%s»?", "Uninstall «%s»?",
+                        "¿Desinstalar «%s»?", "Desinstalar «%s»?", "Désinstaller « %s » ?", "„%s“ deinstallieren?"), label))
+                .setMessage(tr("L'app e i suoi dati verranno rimossi dall'auto.",
+                        "The app and its data will be removed from the car.",
+                        "La app y sus datos se eliminarán del coche.",
+                        "O app e os seus dados serão removidos do carro.",
+                        "L'app et ses données seront supprimées de la voiture.",
+                        "Die App und ihre Daten werden aus dem Fahrzeug entfernt."))
+                .setPositiveButton(tr("Disinstalla", "Uninstall",
+                        "Desinstalar", "Desinstalar", "Désinstaller", "Deinstallieren"), new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface d, int w) {
+                        uninstallNow(pkg, label);
+                    }
+                })
+                .setNegativeButton(tr("Annulla", "Cancel",
+                        "Cancelar", "Cancelar", "Annuler", "Abbrechen"), null)
+                .show();
+    }
+
+    private void uninstallNow(final String pkg, final CharSequence label) {
+        uninstallPkg = pkg;
+        uninstallLabel = label;
+        setStatus(tr("Disinstallazione…", "Uninstalling…",
+                "Desinstalando…", "Desinstalando…", "Désinstallation…", "Wird deinstalliert…"));
+        bg.execute(new Runnable() {
+            @Override
+            public void run() {
+                final int r = Uninstall.start(getApplicationContext(), pkg, auth);
+                main.post(new Runnable() {
+                    @Override
+                    public void run() {
+                        if (r == Uninstall.DONE) {
+                            afterUninstall(pkg, true, null);
+                        } else if (r == Uninstall.NEEDS_DIALOG) {
+                            try {
+                                startActivityForResult(Uninstall.systemDialog(pkg), REQ_UNINSTALL);
+                            } catch (Exception e) {
+                                afterUninstall(pkg, false, null);
+                            }
+                        } else if (r == Uninstall.FAILED) {
+                            afterUninstall(pkg, false, Uninstall.lastError);
+                        }
+                        // STARTED: l'esito arriva da UninstallReceiver
+                    }
+                });
+            }
+        });
+    }
+
+    @Override
+    protected void onActivityResult(int req, int result, Intent data) {
+        super.onActivityResult(req, result, data);
+        if (req != REQ_UNINSTALL || uninstallPkg == null) return;
+        boolean gone;
+        try {
+            getPackageManager().getApplicationInfo(uninstallPkg, 0);
+            gone = false;
+        } catch (android.content.pm.PackageManager.NameNotFoundException e) {
+            gone = true;
+        }
+        if (gone) {
+            Uninstall.done(uninstallPkg);
+            afterUninstall(uninstallPkg, true, null);
+        } else {
+            uninstallPkg = null;
+            refresh(); // annullata dall'utente
+        }
+    }
+
+    /** Dal ricevitore dell'edizione di sistema (qualsiasi thread). */
+    static void onUninstallResult(final String pkg, final boolean ok, final String msg) {
+        new Handler(Looper.getMainLooper()).post(new Runnable() {
+            @Override
+            public void run() {
+                MainActivity a = instance;
+                if (a != null) a.afterUninstall(pkg, ok, msg);
+            }
+        });
+    }
+
+    private void afterUninstall(String pkg, boolean ok, String msg) {
+        CharSequence label = pkg != null && pkg.equals(uninstallPkg) && uninstallLabel != null ? uninstallLabel : pkg;
+        uninstallPkg = null;
+        if (ok) {
+            toast(String.format(tr("%s disinstallata", "%s uninstalled",
+                    "%s desinstalada", "%s desinstalado", "%s désinstallée", "%s deinstalliert"), label));
+            java.util.Set<String> prot = Adb.protectedApps(this);
+            if (prot.remove(pkg)) Adb.prefs(this).edit().putStringSet("protected", prot).apply();
+            List<String> one = new ArrayList<String>();
+            one.add(pkg);
+            removeFromList(one);
+        } else {
+            toast(String.format(tr("%s non è stata disinstallata", "%s was not uninstalled",
+                    "%s no se ha desinstalado", "%s não foi desinstalado", "%s n'a pas été désinstallée", "%s wurde nicht deinstalliert"), label)
+                    + (msg == null || msg.isEmpty() ? "" : ": " + msg));
+        }
+        refresh();
+    }
+
     private void removeFromList(List<String> pkgs) {
         Set<String> gone = new HashSet<String>(pkgs);
         List<Tasks.Entry> keep = new ArrayList<Tasks.Entry>();
@@ -745,6 +904,28 @@ public class MainActivity extends Activity {
                 chooseExcluded();
             }
         }), exp);
+
+        TextView unt = text(tr("Disinstalla app", "Uninstall apps",
+                "Desinstalar apps", "Desinstalar apps", "Désinstaller des apps", "Apps deinstallieren"), 17, TEXT, true);
+        unt.setPadding(0, dp(18), 0, 0);
+        v.addView(unt);
+        v.addView(text(tr("Rimuovi dall'auto le app che hai installato tu. Le app di sistema non si possono disinstallare.",
+                "Remove from the car the apps you installed. System apps can't be uninstalled.",
+                "Quita del coche las apps que has instalado tú. Las apps del sistema no se pueden desinstalar.",
+                "Remova do carro os apps que você instalou. Os apps do sistema não podem ser desinstalados.",
+                "Supprimez de la voiture les apps que vous avez installées. Les apps système ne peuvent pas être désinstallées.",
+                "Entferne die Apps, die du selbst installiert hast. System-Apps können nicht deinstalliert werden."), 15, MUTED, false));
+        LinearLayout.LayoutParams unp = new LinearLayout.LayoutParams(-2, -2);
+        unp.topMargin = dp(8);
+        v.addView(button(tr("Scegli l'app da disinstallare…", "Choose the app to uninstall…",
+                "Elegir la app que desinstalar…", "Escolher o app a desinstalar…",
+                "Choisir l'app à désinstaller…", "Zu deinstallierende App wählen…"), BTN, new View.OnClickListener() {
+            @Override
+            public void onClick(View x) {
+                dlg[0].dismiss();
+                chooseUninstall();
+            }
+        }), unp);
 
         TextView ut = text(tr("Aggiornamenti", "Updates",
                 "Actualizaciones", "Atualizações", "Mises à jour", "Updates"), 17, TEXT, true);

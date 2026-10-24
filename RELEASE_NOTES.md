@@ -1,57 +1,51 @@
 <!-- lang:it -->
 ### 🇮🇹 Italiano
 
-- **6 lingue:** italiano, inglese, spagnolo, portoghese, francese e tedesco. Segue la lingua di sistema; si può cambiare in **Impostazioni → Lingua**
-- **Più veloce:** la lista compare subito (anche quella dell'ultima apertura) e la RAM si aggiorna un attimo dopo; le app chiuse spariscono all'istante
-- **Aggiornamenti corretti:** ogni edizione (normale o di sistema) scarica il proprio APK
-- Chi ha la 1.2 **normale** installi questa versione a mano una volta; dalla 1.2.1 gli aggiornamenti sono automatici
+- **Disinstalla le app** che hai installato tu: pulsante 🗑 sulla scheda dell'app oppure **Impostazioni → Disinstalla app** (elenco di tutte le app installate da te, anche chiuse)
+- Chiede sempre conferma; le app di sistema non si possono disinstallare
+- Edizione di sistema o con ADB: rimozione immediata. Edizione normale senza ADB: conferma nella schermata di Android
 
 ---
 
 <!-- lang:en -->
 ### 🇬🇧 English
 
-- **6 languages:** Italian, English, Spanish, Portuguese, French and German. Follows the system language; change it in **Settings → Language**
-- **Faster:** the list shows up at once (even the one from last time) and memory fills in a moment later; closed apps disappear instantly
-- **Correct updates:** each edition (normal or system) downloads its own APK
-- If you have the **normal** 1.2, install this version by hand once; from 1.2.1 updates are automatic
+- **Uninstall the apps** you installed: 🗑 button on the app card or **Settings → Uninstall apps** (list of all the apps you installed, closed ones included)
+- Always asks for confirmation; system apps can't be uninstalled
+- System edition or with ADB: removed at once. Normal edition without ADB: confirm on Android's screen
 
 ---
 
 <!-- lang:es -->
 ### 🇪🇸 Español
 
-- **6 idiomas:** italiano, inglés, español, portugués, francés y alemán. Sigue el idioma del sistema; se cambia en **Ajustes → Idioma**
-- **Más rápida:** la lista aparece al instante (también la de la última vez) y la RAM se completa un momento después; las apps cerradas desaparecen enseguida
-- **Actualizaciones correctas:** cada edición (normal o de sistema) descarga su propio APK
-- Si tienes la 1.2 **normal**, instala esta versión a mano una vez; desde la 1.2.1 las actualizaciones son automáticas
+- **Desinstala las apps** que has instalado tú: botón 🗑 en la tarjeta de la app o **Ajustes → Desinstalar apps** (lista de todas las apps que has instalado, también las cerradas)
+- Siempre pide confirmación; las apps del sistema no se pueden desinstalar
+- Edición de sistema o con ADB: se eliminan al instante. Edición normal sin ADB: confirma en la pantalla de Android
 
 ---
 
 <!-- lang:pt -->
 ### 🇵🇹 Português
 
-- **6 idiomas:** italiano, inglês, espanhol, português, francês e alemão. Segue o idioma do sistema; muda-se em **Configurações → Idioma**
-- **Mais rápido:** a lista aparece na hora (também a da última vez) e a RAM é preenchida logo depois; os apps fechados somem na hora
-- **Atualizações corretas:** cada edição (normal ou de sistema) baixa o seu próprio APK
-- Quem tem a 1.2 **normal** instale esta versão à mão uma vez; a partir da 1.2.1 as atualizações são automáticas
+- **Desinstale os apps** que você instalou: botão 🗑 no cartão do app ou **Configurações → Desinstalar apps** (lista de todos os apps que você instalou, também os fechados)
+- Pede sempre confirmação; os apps do sistema não podem ser desinstalados
+- Edição de sistema ou com ADB: remoção imediata. Edição normal sem ADB: confirme na tela do Android
 
 ---
 
 <!-- lang:fr -->
 ### 🇫🇷 Français
 
-- **6 langues :** italien, anglais, espagnol, portugais, français et allemand. Suit la langue du système ; modifiable dans **Paramètres → Langue**
-- **Plus rapide :** la liste s'affiche tout de suite (même celle de la dernière fois) et la RAM arrive un instant après ; les apps fermées disparaissent immédiatement
-- **Mises à jour correctes :** chaque édition (normale ou système) télécharge son propre APK
-- Si vous avez la 1.2 **normale**, installez cette version à la main une fois ; à partir de la 1.2.1 les mises à jour sont automatiques
+- **Désinstallez les apps** que vous avez installées : bouton 🗑 sur la fiche de l'app ou **Paramètres → Désinstaller des apps** (liste de toutes les apps que vous avez installées, même fermées)
+- Demande toujours une confirmation ; les apps système ne peuvent pas être désinstallées
+- Édition système ou avec ADB : suppression immédiate. Édition normale sans ADB : confirmez sur l'écran Android
 
 ---
 
 <!-- lang:de -->
 ### 🇩🇪 Deutsch
 
-- **6 Sprachen:** Italienisch, Englisch, Spanisch, Portugiesisch, Französisch und Deutsch. Folgt der Systemsprache; änderbar unter **Einstellungen → Sprache**
-- **Schneller:** Die Liste erscheint sofort (auch die vom letzten Mal), der Speicher wird kurz danach ergänzt; geschlossene Apps verschwinden sofort
-- **Richtige Updates:** Jede Edition (normal oder System) lädt ihr eigenes APK
-- Wer die **normale** 1.2 hat, installiert diese Version einmal von Hand; ab 1.2.1 laufen Updates automatisch
+- **Apps deinstallieren**, die du selbst installiert hast: 🗑-Taste auf der App-Karte oder **Einstellungen → Apps deinstallieren** (Liste aller selbst installierten Apps, auch geschlossene)
+- Fragt immer nach Bestätigung; System-Apps können nicht deinstalliert werden
+- System-Edition oder mit ADB: sofort entfernt. Normale Edition ohne ADB: auf dem Android-Bildschirm bestätigen

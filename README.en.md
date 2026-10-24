@@ -18,6 +18,7 @@ No root needed.
 
 - List of open apps, with the foreground app highlighted and RAM usage
 - **Close** a single app or **Close all**
+- **Uninstall** the apps you installed (never system apps), see below
 - **Exclude and hide system apps** (radio, navigation, car apps): on by default
 - **Apps excluded by choice** from "Close all" (e.g. DiPlay/CarPlay), from Settings or by long-pressing an app
 - Configurable **steering-wheel button** ("Set button…" then press the button); "long-press only" option
@@ -28,6 +29,13 @@ No root needed.
 ## Languages
 
 The app uses the car's **system language** (italiano, English, español, português, français or deutsch; English for any other language). To pick a different one: **Settings → Language**. You can go back to "Automatic" at any time.
+
+## Uninstalling an app
+
+Cards of apps you installed have a **🗑** button; **Settings → Uninstall apps** lists all the apps you installed, closed ones included. Task Manager always asks for confirmation before removing an app. System apps aren't listed and can't be uninstalled.
+
+- **System edition or with ADB:** the app is removed right after you confirm.
+- **Normal edition without ADB:** Android's screen opens, where you confirm with "OK".
 
 ## Which edition to download
 
