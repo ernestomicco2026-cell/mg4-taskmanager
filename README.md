@@ -6,7 +6,7 @@ Task manager per l'infotainment della **MG4** (Android Automotive OS 9): mostra 
 
 Non serve root.
 
-[![Offrimi un caffè con PayPal](https://img.shields.io/badge/Offrimi%20un%20caff%C3%A8-PayPal-0070BA?style=for-the-badge&logo=paypal&logoColor=white)](https://www.paypal.com/pool/9tv7fQ36nA?sr=wccr)
+[![Offrimi un caffè con PayPal](https://img.shields.io/badge/Offrimi%20un%20caff%C3%A8-PayPal-0070BA?style=for-the-badge&logo=paypal&logoColor=white)](https://paypal.me/ErnestoMicco?locale.x=it_IT&country.x=IT)
 
 ## Video
 
@@ -85,7 +85,9 @@ In **Impostazioni → Aggiornamenti** si può disattivare il controllo, sceglier
 ## Sostieni il progetto
 
 MG4 Task Manager è e resterà **gratuito**. Se ti è utile e ti va di contribuire alle ore passate a svilupparlo e provarlo
-in auto, puoi lasciare una piccola offerta: è del tutto **facoltativa**, e anche una stella al repository o una
+in auto, puoi lasciare un'offerta: è del tutto **volontaria** e **non c'è un importo minimo**; anche una stella al repository o una
 segnalazione di un problema sono un aiuto prezioso. Grazie!
 
-[![Offrimi un caffè con PayPal](https://img.shields.io/badge/Offrimi%20un%20caff%C3%A8-PayPal-0070BA?style=for-the-badge&logo=paypal&logoColor=white)](https://www.paypal.com/pool/9tv7fQ36nA?sr=wccr)
+Anche solo **2 €** sono un aiuto prezioso per continuare a sviluppare e provare in auto le nuove versioni.
+
+[![Offrimi un caffè con PayPal](https://img.shields.io/badge/Offrimi%20un%20caff%C3%A8-PayPal-0070BA?style=for-the-badge&logo=paypal&logoColor=white)](https://paypal.me/ErnestoMicco?locale.x=it_IT&country.x=IT)
