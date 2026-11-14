@@ -41,10 +41,14 @@ Cards of apps you installed have a **🗑** button; **Settings → Uninstall app
 
 The [Releases](../../releases/latest) contain two files. **Install only one.**
 
-- **`MG4-TaskManager-system.apk` (recommended):** instant close and the full app list, **with no permissions to enable**. It runs as a **system app** on the infotainment.
+- **`MG4-TaskManager-system.apk` (recommended):** instant close and the full app list, **with no permissions to enable**: accessibility, usage access and update installs turn on by themselves. It runs as a **system app** on the infotainment.
 - **`MG4-TaskManager.apk`:** normal edition, no privileges. Instant close only with ADB active, otherwise via accessibility.
 
 To switch from one edition to the other, uninstall the one you have first.
+
+> **SWI68 R67, R71, R73:** on these software versions MG locked the Android menus, so accessibility can't be turned on by hand. Install the **system edition**: it turns on by itself, with no menus and no ADB. There the normal edition only works with ADB active.
+
+In **Settings → Mode** you can see which edition is installed and whether accessibility is on; the **Enable** button turns it on (in the system edition at once, by itself).
 
 ### What the system edition means
 

@@ -41,10 +41,14 @@ Sulle schede delle app installate da te c'è il pulsante **🗑**; in **Impostaz
 
 Nelle [Release](../../releases/latest) ci sono due file. **Installane uno solo.**
 
-- **`MG4-TaskManager-system.apk` (consigliata):** chiusura istantanea e lista completa delle app, **senza permessi da attivare**. Gira come **app di sistema** dell'infotainment.
+- **`MG4-TaskManager-system.apk` (consigliata):** chiusura istantanea e lista completa delle app, **senza permessi da attivare**: accessibilità, accesso ai dati di utilizzo e installazione degli aggiornamenti si attivano da soli. Gira come **app di sistema** dell'infotainment.
 - **`MG4-TaskManager.apk`:** edizione normale, senza privilegi. Chiusura istantanea solo con ADB attivo, altrimenti tramite accessibilità.
 
 Per passare da un'edizione all'altra, disinstalla prima quella che hai.
+
+> **SWI68 R67, R71, R73:** su questi software MG ha bloccato i menu di Android, quindi l'accessibilità non si può attivare a mano. Installa l'**edizione di sistema**: si attiva da sola, senza menu e senza ADB. L'edizione normale lì funziona solo con ADB attivo.
+
+In **Impostazioni → Modalità** vedi quale edizione è installata e se l'accessibilità è attiva; il pulsante **Attiva** la accende (nell'edizione di sistema subito, da sola).
 
 ### Cosa comporta l'edizione di sistema
 

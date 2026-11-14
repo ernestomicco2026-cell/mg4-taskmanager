@@ -117,6 +117,15 @@ public class MainActivity extends Activity {
             @Override
             public void run() {
                 UpdateJobService.schedule(app); // chiamate a JobScheduler: fuori dal thread principale
+                final Boolean a11y = SelfSetup.runAtStartup(app); // edizione di sistema: permessi da sola
+                if (a11y != null) main.post(new Runnable() {
+                    @Override
+                    public void run() {
+                        if (isFinishing()) return;
+                        toast(a11y ? msgA11yOn() : msgA11yFail());
+                        render();
+                    }
+                });
             }
         });
         handleIntent(getIntent());
@@ -482,6 +491,10 @@ public class MainActivity extends Activity {
                 "• Accesibilidad: activa «Task Manager» para ver las apps abiertas y cerrarlas de verdad (la app pulsa sola «Forzar detención»).\n", "• Acessibilidade: ative «Task Manager» para ver os apps abertos e fechá-los de verdade (o app toca sozinho em «Forçar parada»).\n", "• Accessibilité : activez « Task Manager » pour voir les apps ouvertes et les fermer vraiment (l'app appuie elle-même sur « Forcer l'arrêt »).\n", "• Bedienungshilfen: Aktiviere „Task Manager“, um geöffnete Apps zu sehen und wirklich zu schließen (die App tippt selbst auf „Beenden erzwingen“).\n"));
         if (!usage) b.append(tr("• Accesso ai dati di utilizzo: consenti a «Task Manager» di vedere quali app hai usato.\n", "• Usage access: allow «Task Manager» to see which apps you used.\n",
                 "• Acceso a datos de uso: permite a «Task Manager» ver qué apps has usado.\n", "• Acesso aos dados de uso: permita que o «Task Manager» veja quais apps você usou.\n", "• Accès aux données d'utilisation : autorisez « Task Manager » à voir les apps utilisées.\n", "• Zugriff auf Nutzungsdaten: Erlaube „Task Manager“ zu sehen, welche Apps du benutzt hast.\n"));
+        if (!a11y) b.append(tr("• Se le impostazioni dell'auto non permettono di attivarla (SWI68 R67, R71, R73): ", "• If the car settings don't let you enable it (SWI68 R67, R71, R73): ",
+                "• Si los ajustes del coche no permiten activarla (SWI68 R67, R71, R73): ", "• Se as configurações do carro não permitem ativá-la (SWI68 R67, R71, R73): ",
+                "• Si les paramètres de la voiture ne permettent pas de l'activer (SWI68 R67, R71, R73) : ", "• Wenn die Fahrzeugeinstellungen das Aktivieren nicht erlauben (SWI68 R67, R71, R73): ")
+                + msgUseSystemEdition() + "\n");
         b.append(tr("\nSenza questi permessi può chiudere solo le app in background.", "\nWithout these permissions it can only close background apps.",
                 "\nSin estos permisos solo puede cerrar las apps en segundo plano.", "\nSem estas permissões só consegue fechar os apps em segundo plano.", "\nSans ces autorisations, seules les apps en arrière-plan peuvent être fermées.", "\nOhne diese Berechtigungen können nur Hintergrund-Apps geschlossen werden."));
         TextView body = text(b.toString(), 16, MUTED, false);
@@ -492,9 +505,7 @@ public class MainActivity extends Activity {
                 "Activar accesibilidad", "Ativar acessibilidade", "Activer l'accessibilité", "Bedienungshilfe aktivieren"), ACCENT, new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                if (!KeyService.openAccessibilitySettings(MainActivity.this))
-                    toast(tr("Cerca «Accessibilità» nelle impostazioni dell'auto e attiva «Task Manager»", "Find «Accessibility» in the car settings and enable «Task Manager»",
-                "Busca «Accesibilidad» en los ajustes del coche y activa «Task Manager»", "Procure «Acessibilidade» nas configurações do carro e ative «Task Manager»", "Cherchez « Accessibilité » dans les paramètres de la voiture et activez « Task Manager »", "Suche „Bedienungshilfen“ in den Fahrzeugeinstellungen und aktiviere „Task Manager“"));
+                activateA11y(null);
             }
         }));
         if (!usage) btns.addView(button(tr("Consenti utilizzo", "Allow usage access",
@@ -510,6 +521,74 @@ public class MainActivity extends Activity {
         LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(-1, -2);
         p.bottomMargin = dp(14);
         list.addView(box, p);
+    }
+
+    private static String msgA11yOn() {
+        return tr("Accessibilità attivata", "Accessibility enabled",
+                "Accesibilidad activada", "Acessibilidade ativada", "Accessibilité activée", "Bedienungshilfe aktiviert");
+    }
+
+    private static String msgA11yFail() {
+        return tr("Impossibile attivare l'accessibilità", "Couldn't enable accessibility",
+                "No se ha podido activar la accesibilidad", "Não foi possível ativar a acessibilidade",
+                "Impossible d'activer l'accessibilité", "Bedienungshilfe konnte nicht aktiviert werden");
+    }
+
+    private static String msgUseSystemEdition() {
+        return tr("su questo software installa l'edizione di sistema (MG4-TaskManager-system.apk).",
+                "on this software install the system edition (MG4-TaskManager-system.apk).",
+                "en este software instala la edición de sistema (MG4-TaskManager-system.apk).",
+                "neste software instale a edição de sistema (MG4-TaskManager-system.apk).",
+                "sur ce logiciel, installez l'édition système (MG4-TaskManager-system.apk).",
+                "installiere auf dieser Software die System-Edition (MG4-TaskManager-system.apk).");
+    }
+
+    /**
+     * Pulsante «Attiva»: edizione di sistema → subito, da sola; edizione normale → ADB, altrimenti il menu
+     * di Android; se nemmeno il menu si apre, consiglia l'edizione di sistema.
+     */
+    private void activateA11y(final Runnable after) {
+        if (KeyService.running) {
+            toast(msgA11yOn());
+            return;
+        }
+        final boolean system = SelfSetup.canWriteSecure(this);
+        setStatus(tr("Attivazione…", "Enabling…", "Activando…", "Ativando…", "Activation…", "Wird aktiviert…"));
+        bg.execute(new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    enableAccessibility(getApplicationContext(), system ? null : auth);
+                } catch (IOException noAdb) {
+                    // nessun ADB: si passa al menu
+                }
+                main.post(new Runnable() {
+                    @Override
+                    public void run() {
+                        if (isFinishing()) return;
+                        if (KeyService.running) {
+                            toast(msgA11yOn());
+                        } else if (system) {
+                            toast(msgA11yFail());
+                        } else if (!KeyService.openAccessibilitySettings(MainActivity.this)) {
+                            new AlertDialog.Builder(MainActivity.this, android.R.style.Theme_DeviceDefault_Dialog_Alert)
+                                    .setTitle(msgA11yFail())
+                                    .setMessage(tr("Il menu Accessibilità dell'auto non è raggiungibile e ADB non è attivo: ",
+                                            "The car's Accessibility menu can't be reached and ADB isn't active: ",
+                                            "El menú Accesibilidad del coche no es accesible y ADB no está activo: ",
+                                            "O menu Acessibilidade do carro não está acessível e o ADB não está ativo: ",
+                                            "Le menu Accessibilité de la voiture n'est pas accessible et ADB n'est pas actif : ",
+                                            "Das Bedienungshilfen-Menü des Fahrzeugs ist nicht erreichbar und ADB ist nicht aktiv: ")
+                                            + msgUseSystemEdition())
+                                    .setPositiveButton("OK", null)
+                                    .show();
+                        }
+                        refresh();
+                        if (after != null) after.run();
+                    }
+                });
+            }
+        });
     }
 
     /** Con ADB disponibile concede da sola i permessi che altrimenti l'utente dovrebbe dare a mano. */
@@ -838,16 +917,25 @@ public class MainActivity extends Activity {
             modeDesc = tr("Base: né firma di sistema né ADB. Le app si chiudono tramite accessibilità.", "Basic: neither system signature nor ADB. Apps are closed via accessibility.",
                 "Básico: ni firma de sistema ni ADB. Las apps se cierran mediante accesibilidad.", "Básico: nem assinatura de sistema nem ADB. Os apps são fechados pela acessibilidade.", "De base : ni signature système ni ADB. Les apps sont fermées via l'accessibilité.", "Basis: weder Systemsignatur noch ADB. Apps werden über die Bedienungshilfe geschlossen.");
         v.addView(text(modeDesc, 15, MUTED, false));
+        boolean sysEd = Updater.isSystemEdition(this);
+        TextView ed = text(tr("Edizione installata: ", "Installed edition: ",
+                "Edición instalada: ", "Edição instalada: ", "Édition installée : ", "Installierte Edition: ")
+                + (sysEd ? tr("di sistema", "system", "de sistema", "de sistema", "système", "System")
+                : tr("normale", "normal", "normal", "normal", "normale", "normal"))
+                + "\n" + tr("Accessibilità: ", "Accessibility: ", "Accesibilidad: ", "Acessibilidade: ", "Accessibilité : ", "Bedienungshilfe: ")
+                + (KeyService.running ? tr("attiva", "on", "activa", "ativa", "activée", "aktiv")
+                : tr("non attiva", "off", "no activa", "não ativa", "désactivée", "nicht aktiv")), 15, TEXT, false);
+        ed.setPadding(0, dp(8), 0, 0);
+        v.addView(ed);
         LinearLayout.LayoutParams a11yP = new LinearLayout.LayoutParams(-2, -2);
         a11yP.topMargin = dp(8);
-        v.addView(button(KeyService.running ? tr("Accessibilità attiva", "Accessibility on",
-                "Accesibilidad activa", "Acessibilidade ativa", "Accessibilité activée", "Bedienungshilfe aktiv")
-                        : tr("Attiva accessibilità", "Enable accessibility",
-                "Activar accesibilidad", "Ativar acessibilidade", "Activer l'accessibilité", "Bedienungshilfe aktivieren"), BTN,
+        if (!KeyService.running) v.addView(button(tr("Attiva", "Enable",
+                "Activar", "Ativar", "Activer", "Aktivieren"), ACCENT,
                 new View.OnClickListener() {
                     @Override
                     public void onClick(View x) {
-                        KeyService.openAccessibilitySettings(MainActivity.this);
+                        dlg[0].dismiss();
+                        activateA11y(null);
                     }
                 }), a11yP);
         TextView adbT = text(tr("Indirizzo ADB (avanzato)", "ADB address (advanced)",
@@ -1298,7 +1386,12 @@ public class MainActivity extends Activity {
     /** Attiva (via ADB) il servizio di accessibilità del Task Manager, se non è già attivo. */
     private static void enableAccessibility(Context c, AdbClient.AuthListener l) throws IOException {
         if (KeyService.running) return;
-        // senza ADB: l'utente deve attivarla a mano (gestito da chi chiama)
+        // edizione di sistema: scrive da sola le impostazioni, senza ADB né menu
+        if (SelfSetup.enableAccessibility(c)) {
+            SelfSetup.waitA11y(3000);
+            return;
+        }
+        // senza firma di sistema né ADB: l'utente deve attivarla a mano (gestito da chi chiama)
         String comp = c.getPackageName() + "/" + KeyService.class.getName();
         String cur = Adb.exec(c, "settings get secure enabled_accessibility_services", l).trim();
         if (!cur.contains(comp)) {

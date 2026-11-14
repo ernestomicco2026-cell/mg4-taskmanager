@@ -293,6 +293,9 @@ def main(build):
         E("uses-permission", [("android:name", "android.permission.FORCE_STOP_PACKAGES")]),
         E("uses-permission", [("android:name", "android.permission.REAL_GET_TASKS")]),
         E("uses-permission", [("android:name", "android.permission.DELETE_PACKAGES")]),
+        E("uses-permission", [("android:name", "android.permission.WRITE_SECURE_SETTINGS")]),
+        E("uses-permission", [("android:name", "android.permission.MANAGE_APP_OPS_MODES")]),
+        E("uses-permission", [("android:name", "android.permission.UPDATE_APP_OPS_STATS")]),
         E("application", [("android:label", "Task Manager"), ("android:icon", Ref(ID_DRAWABLE_IC)),
                           ("android:theme", Ref(THEME_DEVICE_DEFAULT_NO_ACTION_BAR))], [
             E("activity", [("android:name", PKG + ".MainActivity"), ("android:label", "Task Manager"),
