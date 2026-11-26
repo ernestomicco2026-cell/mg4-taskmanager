@@ -1,8 +1,13 @@
-# Quando pubblichi una Release (tag "vX.Y.Z") dal sito di GitHub, compila l'APK firmato
-# e lo allega alla Release. Le auto lo trovano al controllo aggiornamenti successivo.
+# Release automatica: quando su main cambia il file VERSION (nuova versione approvata da Ernesto), compila l'APK
+# firmato e crea da sola la Release "vX.Y" con le note di RELEASE_NOTES.md. Se la Release esiste già non fa niente.
+# Funziona anche come prima: se pubblichi a mano una Release dal sito di GitHub, compila e allega l'APK.
+# Le auto trovano l'aggiornamento al controllo successivo.
 name: Release
 
 on:
+  push:
+    branches: [main]
+    paths: ['VERSION', '.github/workflows/release.yml']
   release:
     types: [published]
   workflow_dispatch:
@@ -18,23 +23,43 @@ jobs:
   build:
     runs-on: ubuntu-latest
     env:
-      TAG: ${{ github.event.release.tag_name || github.event.inputs.tag || github.ref_name }}
+      TAG_EVENTO: ${{ github.event.release.tag_name || github.event.inputs.tag }}
     steps:
       - uses: actions/checkout@v5
+      - name: Versione e controllo
+        id: v
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TAG="$TAG_EVENTO"
+          [ -n "$TAG" ] || TAG="v$(tr -d ' \r\n' < VERSION)"
+          echo "TAG=$TAG" >> "$GITHUB_ENV"
+          if [ "${{ github.event_name }}" = "push" ]; then
+            if gh release view "$TAG" -R "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+              echo "La Release $TAG esiste già: non faccio niente."
+              echo "fai=no" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+          fi
+          echo "fai=si" >> "$GITHUB_OUTPUT"
 
       - uses: actions/setup-java@v5
+        if: steps.v.outputs.fai == 'si'
         with:
           distribution: temurin
           java-version: "17"
 
       - name: Android SDK (API 28 + build-tools)
+        if: steps.v.outputs.fai == 'si'
         run: |
           yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "platforms;android-28" "build-tools;34.0.0" > /dev/null
 
       - name: Pillow (icona)
+        if: steps.v.outputs.fai == 'si'
         run: pip install --quiet pillow
 
       - name: Chiave di firma
+        if: steps.v.outputs.fai == 'si'
         id: key
         env:
           KEYSTORE_B64: ${{ secrets.KEYSTORE_B64 }}
@@ -71,6 +96,13 @@ jobs:
         run: |
           APKS="MG4-TaskManager.apk"
           [ -f MG4-TaskManager-system.apk ] && APKS="$APKS MG4-TaskManager-system.apk"
+          if ! gh release view "$TAG" >/dev/null 2>&1; then
+            # Release automatica: la crea adesso, con gli APK e le note
+            gh release create "$TAG" $APKS --target "$GITHUB_SHA" --title "MG4 Task Manager ${TAG#v}" \
+              --notes-file RELEASE_NOTES.md --latest
+            echo "Creata la Release $TAG"
+            exit 0
+          fi
           gh release upload "$TAG" $APKS --clobber
           # Se la Release è stata pubblicata senza descrizione, usa RELEASE_NOTES.md
           # (le note multilingua: l'app mostra la sezione nella lingua dell'utente).
